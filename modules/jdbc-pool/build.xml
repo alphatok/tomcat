@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
   contributor license agreements.  See the NOTICE file distributed with
@@ -39,9 +39,7 @@
   <!-- Project Properties -->
   <property name="name"                  value="Apache Tomcat JDBC Pool" />
   <tstamp>
-    <format property="year" pattern="yyyy" locale="en" timezone="UTC" />
-    <format property="TODAY" pattern="MMM d yyyy" locale="en" timezone="UTC" />
-    <format property="TSTAMP" pattern="HH:mm:ss" locale="en" timezone="UTC" />
+    <format property="year" pattern="yyyy" locale="en"/>
   </tstamp>
 
   <property name="project"               value="apache-tomcat-jdbc-pool" />
@@ -85,12 +83,16 @@
   </fileset>
 
   <!-- Version info filter set -->
+  <tstamp>
+    <format property="TODAY" pattern="MMM d yyyy" locale="en"/>
+    <format property="TSTAMP" pattern="hh:mm:ss"/>
+  </tstamp>
   <filterset id="version.filters">
     <filter token="YEAR" value="${year}"/>
     <filter token="VERSION" value="${version}"/>
     <filter token="VERSION_MAJOR" value="${version.major}"/>
     <filter token="VERSION_MAJOR_MINOR" value="${version.major.minor}"/>
-    <filter token="VERSION_BUILT" value="${TODAY} ${TSTAMP} UTC"/>
+    <filter token="VERSION_BUILT" value="${TODAY} ${TSTAMP}"/>
     <filter token="TOMCAT_PROJECT_DEST" value="${tomcat.project.dest}"/>
   </filterset>
 
@@ -119,21 +121,13 @@
           excludes="build.xml"
           includes="jdbc-pool.xml">
       <param name="relative-path" expression="http://tomcat.apache.org/tomcat-6.0-doc"/>
-      <param name="apache-logo" expression="/images/asf-logo.svg"/>
+      <param name="apache-logo" expression="/images/asf-logo.gif"/>
     </xslt>
     <move tofile="${basedir}/src/main/java/org/apache/tomcat/jdbc/pool/package.html"
           file="${basedir}/src/main/java/org/apache/tomcat/jdbc/pool/jdbc-pool.html"/>
-    <javadoc
-        destdir="${tomcat.api}"
-        bottom="Copyright &amp;#169; 2000-${year} Apache Software Foundation. All Rights Reserved."
-        encoding="UTF-8"
-        docencoding="UTF-8"
-        charset="UTF-8"
-        additionalparam="-breakiterator -notimestamp"
-        verbose="false">
+    <javadoc sourcepath="${basedir}/src/main/java" destdir="${tomcat.api}" verbose="false"
+             link="http://java.sun.com/javase/6/docs/api/">
       <classpath refid="tomcat.jdbc.classpath"/>
-      <link href="http://docs.oracle.com/javase/7/docs/api/"/>
-      <sourcepath location="${basedir}/src/main/java"/>
     </javadoc>
     <!-- connection pool API  file-->
     <jar jarfile="${tomcat-jdbc-api.jar}" update="true">
@@ -150,6 +144,7 @@
            deprecation="${compile.deprecation}"
            source="${compile.source}"
            target="${compile.target}"
+           optimize="${compile.optimize}"
            encoding="ISO-8859-1"
            includeantruntime="false">
       <classpath refid="tomcat.jdbc.classpath"/>
@@ -186,6 +181,7 @@
            deprecation="${compile.deprecation}"
            source="${compile.source}"
            target="${compile.target}"
+           optimize="${compile.optimize}"
            encoding="ISO-8859-1"
            includeantruntime="false">
       <classpath refid="tomcat.jdbc.classpath"/>
@@ -241,7 +237,7 @@
           excludes="build.xml project.xml"
           includes="*.xml">
       <param name="relative-path" expression="http://tomcat.apache.org/tomcat-6.0-doc"/>
-      <param name="apache-logo" expression="/images/asf-logo.svg"/>
+      <param name="apache-logo" expression="/images/asf-logo.gif"/>
     </xslt>
   </target>
 

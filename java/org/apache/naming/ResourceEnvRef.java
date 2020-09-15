@@ -16,12 +16,15 @@
  */
 package org.apache.naming;
 
+import javax.naming.Context;
+import javax.naming.Reference;
+
 /**
  * Represents a reference address to a resource environment.
  *
  * @author Remy Maucherat
  */
-public class ResourceEnvRef extends AbstractRef {
+public class ResourceEnvRef extends Reference {
 
     private static final long serialVersionUID = 1L;
 
@@ -30,7 +33,7 @@ public class ResourceEnvRef extends AbstractRef {
      * Default factory for this reference.
      */
     public static final String DEFAULT_FACTORY =
-            org.apache.naming.factory.Constants.DEFAULT_RESOURCE_ENV_FACTORY;
+        org.apache.naming.factory.Constants.DEFAULT_RESOURCE_ENV_FACTORY;
 
 
     /**
@@ -43,8 +46,22 @@ public class ResourceEnvRef extends AbstractRef {
     }
 
 
+    /**
+     * Retrieves the class name of the factory of the object to which this
+     * reference refers.
+     */
     @Override
-    protected String getDefaultFactoryClassName() {
-        return DEFAULT_FACTORY;
+    public String getFactoryClassName() {
+        String factory = super.getFactoryClassName();
+        if (factory != null) {
+            return factory;
+        } else {
+            factory = System.getProperty(Context.OBJECT_FACTORIES);
+            if (factory != null) {
+                return null;
+            } else {
+                return DEFAULT_FACTORY;
+            }
+        }
     }
 }

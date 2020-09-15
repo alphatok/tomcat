@@ -18,12 +18,10 @@
 package org.apache.coyote.http11.filters;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.coyote.InputBuffer;
 import org.apache.coyote.http11.InputFilter;
 import org.apache.tomcat.util.buf.ByteChunk;
-import org.apache.tomcat.util.net.ApplicationBufferHandler;
 
 /**
  * Input filter responsible for replaying the request body when restoring the
@@ -45,16 +43,28 @@ public class SavedRequestInputFilter implements InputFilter {
         this.input = input;
     }
 
+    /**
+     * Read bytes.
+     */
     @Override
-    public int doRead(ApplicationBufferHandler handler) throws IOException {
+    public int doRead(ByteChunk chunk, org.apache.coyote.Request request)
+            throws IOException {
         if(input.getOffset()>= input.getEnd())
             return -1;
 
-        ByteBuffer byteBuffer = handler.getByteBuffer();
-        byteBuffer.position(byteBuffer.limit()).limit(byteBuffer.capacity());
-        input.substract(byteBuffer);
+        int writeLength = 0;
 
-        return byteBuffer.remaining();
+        if (chunk.getLimit() > 0 && chunk.getLimit() < input.getLength()) {
+            writeLength = chunk.getLimit();
+        } else {
+            writeLength = input.getLength();
+        }
+
+        input.substract(chunk.getBuffer(), 0, writeLength);
+        chunk.setOffset(0);
+        chunk.setEnd(writeLength);
+
+        return writeLength;
     }
 
     /**

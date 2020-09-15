@@ -20,13 +20,11 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.MessageFormat;
 import java.util.Enumeration;
 import java.util.ResourceBundle;
 
-import javax.servlet.DispatcherType;
 import javax.servlet.GenericServlet;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -238,13 +236,10 @@ public abstract class HttpServlet extends GenericServlet {
     protected void doHead(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
 
-        if (DispatcherType.INCLUDE.equals(req.getDispatcherType())) {
-            doGet(req, resp);
-        } else {
-            NoBodyResponse response = new NoBodyResponse(resp);
-            doGet(req, response);
-            response.setContentLength();
-        }
+        NoBodyResponse response = new NoBodyResponse(resp);
+
+        doGet(req, response);
+        response.setContentLength();
     }
 
 
@@ -490,18 +485,6 @@ public abstract class HttpServlet extends GenericServlet {
         boolean ALLOW_TRACE = true;
         boolean ALLOW_OPTIONS = true;
 
-        // Tomcat specific hack to see if TRACE is allowed
-        Class<?> clazz = null;
-        try {
-            clazz = Class.forName("org.apache.catalina.connector.RequestFacade");
-            Method getAllowTrace = clazz.getMethod("getAllowTrace", (Class<?>[]) null);
-            ALLOW_TRACE = ((Boolean) getAllowTrace.invoke(req, (Object[]) null)).booleanValue();
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException |
-                IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            // Ignore. Not running on Tomcat. TRACE is always allowed.
-        }
-        // End of Tomcat specific hack
-
         for (int i=0; i<methods.length; i++) {
             Method m = methods[i];
 
@@ -593,6 +576,7 @@ public abstract class HttpServlet extends GenericServlet {
         ServletOutputStream out = resp.getOutputStream();
         out.print(buffer.toString());
         out.close();
+        return;
     }
 
 

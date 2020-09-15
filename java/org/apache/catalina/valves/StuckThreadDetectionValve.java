@@ -20,13 +20,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.servlet.ServletException;
 
@@ -60,33 +57,26 @@ public class StuckThreadDetectionValve extends ValveBase {
     private final AtomicInteger stuckCount = new AtomicInteger(0);
 
     /**
-     * Keeps count of the number of stuck threads that have been interrupted
-     */
-    private AtomicLong interruptedThreadsCount = new AtomicLong();
-
-    /**
      * In seconds. Default 600 (10 minutes).
      */
     private int threshold = 600;
 
     /**
-     * In seconds. Default is -1 to disable interruption.
-     */
-    private int interruptThreadThreshold;
-
-    /**
      * The only references we keep to actual running Thread objects are in
      * this Map (which is automatically cleaned in invoke()s finally clause).
-     * That way, Threads can be GC'ed, even though the Valve still thinks they
+     * That way, Threads can be GC'ed, eventhough the Valve still thinks they
      * are stuck (caused by a long monitor interval)
      */
-    private final Map<Long, MonitoredThread> activeThreads = new ConcurrentHashMap<>();
-
+    private final ConcurrentHashMap<Long, MonitoredThread> activeThreads =
+            new ConcurrentHashMap<>();
+    /**
+     *
+     */
     private final Queue<CompletedStuckThread> completedStuckThreadsQueue =
             new ConcurrentLinkedQueue<>();
 
     /**
-     * Specifies the threshold (in seconds) used when checking for stuck threads.
+     * Specify the threshold (in seconds) used when checking for stuck threads.
      * If &lt;=0, the detection is disabled. The default is 600 seconds.
      *
      * @param threshold
@@ -104,22 +94,6 @@ public class StuckThreadDetectionValve extends ValveBase {
         return threshold;
     }
 
-
-    public int getInterruptThreadThreshold() {
-        return interruptThreadThreshold;
-    }
-
-    /**
-     * Specifies the threshold (in seconds) before stuck threads are interrupted.
-     * If &lt;=0, the interruption is disabled. The default is -1.
-     * If &gt;=0, the value must actually be &gt;= threshold.
-     *
-     * @param interruptThreadThreshold
-     *            The new thread interruption threshold in seconds
-     */
-    public void setInterruptThreadThreshold(int interruptThreadThreshold) {
-        this.interruptThreadThreshold = interruptThreadThreshold;
-    }
 
     /**
      * Required to enable async support.
@@ -199,7 +173,7 @@ public class StuckThreadDetectionValve extends ValveBase {
             requestUrl.append(request.getQueryString());
         }
         MonitoredThread monitoredThread = new MonitoredThread(Thread.currentThread(),
-            requestUrl.toString(), interruptThreadThreshold > 0);
+            requestUrl.toString());
         activeThreads.put(key, monitoredThread);
 
         try {
@@ -207,9 +181,6 @@ public class StuckThreadDetectionValve extends ValveBase {
         } finally {
             activeThreads.remove(key);
             if (monitoredThread.markAsDone() == MonitoredThreadState.STUCK) {
-                if(monitoredThread.wasInterrupted()) {
-                    interruptedThreadsCount.incrementAndGet();
-                }
                 completedStuckThreadsQueue.add(
                         new CompletedStuckThread(monitoredThread.getThread(),
                             monitoredThread.getActiveTimeInMillis()));
@@ -221,7 +192,7 @@ public class StuckThreadDetectionValve extends ValveBase {
     public void backgroundProcess() {
         super.backgroundProcess();
 
-        long thresholdInMillis = threshold * 1000L;
+        long thresholdInMillis = threshold * 1000;
 
         // Check monitored threads, being careful that the request might have
         // completed by the time we examine it
@@ -232,9 +203,6 @@ public class StuckThreadDetectionValve extends ValveBase {
                 int numStuckThreads = stuckCount.incrementAndGet();
                 notifyStuckThreadDetected(monitoredThread, activeTime, numStuckThreads);
             }
-            if(interruptThreadThreshold > 0 && activeTime >= interruptThreadThreshold*1000L) {
-                monitoredThread.interruptIfStuck(interruptThreadThreshold);
-            }
         }
         // Check if any threads previously reported as stuck, have finished.
         for (CompletedStuckThread completedStuckThread = completedStuckThreadsQueue.poll();
@@ -243,10 +211,6 @@ public class StuckThreadDetectionValve extends ValveBase {
             int numStuckThreads = stuckCount.decrementAndGet();
             notifyStuckThreadCompleted(completedStuckThread, numStuckThreads);
         }
-    }
-
-    public int getStuckThreadCount() {
-        return stuckCount.get();
     }
 
     public long[] getStuckThreadIds() {
@@ -274,11 +238,6 @@ public class StuckThreadDetectionValve extends ValveBase {
         return nameList.toArray(new String[nameList.size()]);
     }
 
-    public long getInterruptedThreadsCount() {
-        return interruptedThreadsCount.get();
-    }
-
-
     private static class MonitoredThread {
 
         /**
@@ -289,27 +248,11 @@ public class StuckThreadDetectionValve extends ValveBase {
         private final long start;
         private final AtomicInteger state = new AtomicInteger(
             MonitoredThreadState.RUNNING.ordinal());
-        /**
-         * Semaphore to synchronize the stuck thread with the background-process
-         * thread. It's not used if the interruption feature is not active.
-         */
-        private final Semaphore interruptionSemaphore;
-        /**
-         * Set to true after the thread is interrupted. No need to make it
-         * volatile since it is accessed right after acquiring the semaphore.
-         */
-        private boolean interrupted;
 
-        public MonitoredThread(Thread thread, String requestUri,
-                boolean interruptible) {
+        public MonitoredThread(Thread thread, String requestUri) {
             this.thread = thread;
             this.requestUri = requestUri;
             this.start = System.currentTimeMillis();
-            if (interruptible) {
-                interruptionSemaphore = new Semaphore(1);
-            } else {
-                interruptionSemaphore = null;
-            }
         }
 
         public Thread getThread() {
@@ -335,62 +278,11 @@ public class StuckThreadDetectionValve extends ValveBase {
 
         public MonitoredThreadState markAsDone() {
             int val = this.state.getAndSet(MonitoredThreadState.DONE.ordinal());
-            MonitoredThreadState threadState = MonitoredThreadState.values()[val];
-
-            if (threadState == MonitoredThreadState.STUCK
-                    && interruptionSemaphore != null) {
-                try {
-                    // use the semaphore to synchronize with the background thread
-                    // which might try to interrupt this current thread.
-                    // Otherwise, the current thread might be interrupted after
-                    // going out from here, maybe already serving a new request
-                    this.interruptionSemaphore.acquire();
-                } catch (InterruptedException e) {
-                    log.debug(
-                            "thread interrupted after the request is finished, ignoring",
-                            e);
-                }
-                // no need to release the semaphore, it will be GCed
-            }
-            //else the request went through before being marked as stuck, no need
-            //to sync agains the semaphore
-            return threadState;
+            return MonitoredThreadState.values()[val];
         }
 
         boolean isMarkedAsStuck() {
             return this.state.get() == MonitoredThreadState.STUCK.ordinal();
-        }
-
-        public boolean interruptIfStuck(long interruptThreadThreshold) {
-            if (!isMarkedAsStuck() || interruptionSemaphore == null
-                    || !this.interruptionSemaphore.tryAcquire()) {
-                // if the semaphore is already acquired, it means that the
-                // request thread got unstuck before we interrupted it
-                return false;
-            }
-            try {
-                if (log.isWarnEnabled()) {
-                    String msg = sm.getString(
-                        "stuckThreadDetectionValve.notifyStuckThreadInterrupted",
-                        this.getThread().getName(),
-                        Long.valueOf(getActiveTimeInMillis()),
-                        this.getStartTime(), this.getRequestUri(),
-                        Long.valueOf(interruptThreadThreshold),
-                        String.valueOf(this.getThread().getId()));
-                    Throwable th = new Throwable();
-                    th.setStackTrace(this.getThread().getStackTrace());
-                    log.warn(msg, th);
-                }
-                this.thread.interrupt();
-            } finally {
-                this.interrupted = true;
-                this.interruptionSemaphore.release();
-            }
-            return true;
-        }
-
-        public boolean wasInterrupted() {
-            return interrupted;
         }
     }
 
@@ -420,6 +312,6 @@ public class StuckThreadDetectionValve extends ValveBase {
     }
 
     private enum MonitoredThreadState {
-        RUNNING, STUCK, DONE
+        RUNNING, STUCK, DONE;
     }
 }

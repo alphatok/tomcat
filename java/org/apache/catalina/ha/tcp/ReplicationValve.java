@@ -42,8 +42,6 @@ import org.apache.catalina.ha.ClusterValve;
 import org.apache.catalina.ha.session.DeltaManager;
 import org.apache.catalina.ha.session.DeltaSession;
 import org.apache.catalina.valves.ValveBase;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.res.StringManager;
 
 /**
@@ -65,7 +63,8 @@ import org.apache.tomcat.util.res.StringManager;
 public class ReplicationValve
     extends ValveBase implements ClusterValve {
 
-    private static final Log log = LogFactory.getLog(ReplicationValve.class);
+    private static final org.apache.juli.logging.Log log =
+        org.apache.juli.logging.LogFactory.getLog( ReplicationValve.class );
 
     // ----------------------------------------------------- Instance Variables
 
@@ -118,7 +117,7 @@ public class ReplicationValve
     }
 
     /**
-     * @return the cluster.
+     * @return Returns the cluster.
      */
     @Override
     public CatalinaCluster getCluster() {
@@ -134,7 +133,7 @@ public class ReplicationValve
     }
 
     /**
-     * @return the filter
+     * @return Returns the filter
      */
     public String getFilter() {
        if (filter == null) {
@@ -167,7 +166,7 @@ public class ReplicationValve
     }
 
     /**
-     * @return the primaryIndicator.
+     * @return Returns the primaryIndicator.
      */
     public boolean isPrimaryIndicator() {
         return primaryIndicator;
@@ -181,7 +180,7 @@ public class ReplicationValve
     }
 
     /**
-     * @return the primaryIndicatorName.
+     * @return Returns the primaryIndicatorName.
      */
     public String getPrimaryIndicatorName() {
         return primaryIndicatorName;
@@ -196,7 +195,6 @@ public class ReplicationValve
 
     /**
      * Calc processing stats
-     * @return <code>true</code> if statistics are enabled
      */
     public boolean doStatistics() {
         return doProcessingStats;
@@ -204,8 +202,6 @@ public class ReplicationValve
 
     /**
      * Set Calc processing stats
-     *
-     * @param doProcessingStats New flag value
      * @see #resetStatistics()
      */
     public void setStatistics(boolean doProcessingStats) {
@@ -213,49 +209,49 @@ public class ReplicationValve
     }
 
     /**
-     * @return the lastSendTime.
+     * @return Returns the lastSendTime.
      */
     public long getLastSendTime() {
         return lastSendTime;
     }
 
     /**
-     * @return the nrOfRequests.
+     * @return Returns the nrOfRequests.
      */
     public long getNrOfRequests() {
         return nrOfRequests;
     }
 
     /**
-     * @return the nrOfFilterRequests.
+     * @return Returns the nrOfFilterRequests.
      */
     public long getNrOfFilterRequests() {
         return nrOfFilterRequests;
     }
 
     /**
-     * @return the nrOfCrossContextSendRequests.
+     * @return Returns the nrOfCrossContextSendRequests.
      */
     public long getNrOfCrossContextSendRequests() {
         return nrOfCrossContextSendRequests;
     }
 
     /**
-     * @return the nrOfSendRequests.
+     * @return Returns the nrOfSendRequests.
      */
     public long getNrOfSendRequests() {
         return nrOfSendRequests;
     }
 
     /**
-     * @return the totalRequestTime.
+     * @return Returns the totalRequestTime.
      */
     public long getTotalRequestTime() {
         return totalRequestTime;
     }
 
     /**
-     * @return the totalSendTime.
+     * @return Returns the totalSendTime.
      */
     public long getTotalSendTime() {
         return totalSendTime;
@@ -310,7 +306,7 @@ public class ReplicationValve
         Context context = request.getContext();
         boolean isCrossContext = context != null
                 && context instanceof StandardContext
-                && context.getCrossContext();
+                && ((StandardContext) context).getCrossContext();
         try {
             if(isCrossContext) {
                 if(log.isDebugEnabled()) {
@@ -388,6 +384,12 @@ public class ReplicationValve
 
     // --------------------------------------------------------- Protected Methods
 
+    /**
+     * @param request
+     * @param totalstart
+     * @param isCrossContext
+     * @param clusterManager
+     */
     protected void sendReplicationMessage(Request request, long totalstart, boolean isCrossContext, ClusterManager clusterManager) {
         //this happens after the request
         long start = 0;
@@ -422,7 +424,8 @@ public class ReplicationValve
     protected void sendCrossContextSession() {
         List<DeltaSession> sessions = crossContextSessions.get();
         if(sessions != null && sessions.size() >0) {
-            for (DeltaSession session : sessions) {
+            for(Iterator<DeltaSession> iter = sessions.iterator(); iter.hasNext() ;) {
+                Session session = iter.next();
                 if(log.isDebugEnabled()) {
                     log.debug(sm.getString("ReplicationValve.crossContext.sendDelta",
                             session.getManager().getContext().getName() ));
@@ -530,7 +533,7 @@ public class ReplicationValve
 
     /**
      * check for session invalidations
-     * @param manager Associated manager
+     * @param manager
      */
     protected void sendInvalidSessions(ClusterManager manager) {
         String[] invalidIds=manager.getInvalidatedSessions();
@@ -557,8 +560,8 @@ public class ReplicationValve
 
     /**
      * Protocol cluster replications stats
-     * @param requestTime Request time
-     * @param clusterTime Cluster time
+     * @param requestTime
+     * @param clusterTime
      */
     protected  void updateStats(long requestTime, long clusterTime) {
         // TODO: Async requests may trigger multiple replication requests. How,
@@ -590,8 +593,8 @@ public class ReplicationValve
      * Mark Request that processed at primary node with attribute
      * primaryIndicatorName
      *
-     * @param request The Servlet request
-     * @throws IOException IO error finding session
+     * @param request
+     * @throws IOException
      */
     protected void createPrimaryIndicator(Request request) throws IOException {
         String id = request.getRequestedSessionId();

@@ -24,7 +24,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import javax.naming.NamingException;
@@ -71,7 +70,8 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
     private static final Log log = LogFactory.getLog(NamingResourcesImpl.class);
 
-    private static final StringManager sm = StringManager.getManager(NamingResourcesImpl.class);
+    private static final StringManager sm =
+        StringManager.getManager(Constants.Package);
 
     private volatile boolean resourceRequireExplicitRegistration = false;
 
@@ -104,27 +104,27 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
     /**
      * The EJB resource references for this web application, keyed by name.
      */
-    private final Map<String, ContextEjb> ejbs = new HashMap<>();
+    private final HashMap<String, ContextEjb> ejbs = new HashMap<>();
 
 
     /**
      * The environment entries for this web application, keyed by name.
      */
-    private final Map<String, ContextEnvironment> envs = new HashMap<>();
+    private final HashMap<String, ContextEnvironment> envs = new HashMap<>();
 
 
     /**
      * The local  EJB resource references for this web application, keyed by
      * name.
      */
-    private final Map<String, ContextLocalEjb> localEjbs = new HashMap<>();
+    private final HashMap<String, ContextLocalEjb> localEjbs = new HashMap<>();
 
 
     /**
-     * The message destination references for this web application,
+     * The message destination referencess for this web application,
      * keyed by name.
      */
-    private final Map<String, MessageDestinationRef> mdrs = new HashMap<>();
+    private final HashMap<String, MessageDestinationRef> mdrs = new HashMap<>();
 
 
     /**
@@ -173,7 +173,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the container with which the naming resources are associated.
+     * Get the container with which the naming resources are associated.
      */
     @Override
     public Object getContainer() {
@@ -183,7 +183,6 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
     /**
      * Set the container with which the naming resources are associated.
-     * @param container the associated with the resources
      */
     public void setContainer(Object container) {
         this.container = container;
@@ -192,7 +191,6 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
     /**
      * Set the transaction object.
-     * @param transaction the transaction descriptor
      */
     public void setTransaction(ContextTransaction transaction) {
         this.transaction = transaction;
@@ -200,7 +198,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the transaction object.
+     * Get the transaction object.
      */
     public ContextTransaction getTransaction() {
         return transaction;
@@ -482,7 +480,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the EJB resource reference with the specified name, if any;
+     * Return the EJB resource reference with the specified name, if any;
      * otherwise, return <code>null</code>.
      *
      * @param name Name of the desired EJB resource reference
@@ -497,7 +495,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined EJB resource references for this application.
+     * Return the defined EJB resource references for this application.
      * If there are none, a zero-length array is returned.
      */
     public ContextEjb[] findEjbs() {
@@ -511,7 +509,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the environment entry with the specified name, if any;
+     * Return the environment entry with the specified name, if any;
      * otherwise, return <code>null</code>.
      *
      * @param name Name of the desired environment entry
@@ -526,7 +524,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the set of defined environment entries for this web
+     * Return the set of defined environment entries for this web
      * application.  If none have been defined, a zero-length array
      * is returned.
      */
@@ -541,7 +539,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the local EJB resource reference with the specified name, if any;
+     * Return the local EJB resource reference with the specified name, if any;
      * otherwise, return <code>null</code>.
      *
      * @param name Name of the desired EJB resource reference
@@ -556,7 +554,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined local EJB resource references for this application.
+     * Return the defined local EJB resource references for this application.
      * If there are none, a zero-length array is returned.
      */
     public ContextLocalEjb[] findLocalEjbs() {
@@ -570,7 +568,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the message destination reference with the specified name,
+     * Return the message destination reference with the specified name,
      * if any; otherwise, return <code>null</code>.
      *
      * @param name Name of the desired message destination reference
@@ -585,7 +583,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined message destination references for this application.
+     * Return the defined message destination references for this application.
      * If there are none, a zero-length array is returned.
      */
     public MessageDestinationRef[] findMessageDestinationRefs() {
@@ -600,7 +598,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the resource reference with the specified name, if any;
+     * Return the resource reference with the specified name, if any;
      * otherwise return <code>null</code>.
      *
      * @param name Name of the desired resource reference
@@ -615,7 +613,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the resource link with the specified name, if any;
+     * Return the resource link with the specified name, if any;
      * otherwise return <code>null</code>.
      *
      * @param name Name of the desired resource link
@@ -630,7 +628,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined resource links for this application.  If
+     * Return the defined resource links for this application.  If
      * none have been defined, a zero-length array is returned.
      */
     public ContextResourceLink[] findResourceLinks() {
@@ -645,7 +643,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined resource references for this application.  If
+     * Return the defined resource references for this application.  If
      * none have been defined, a zero-length array is returned.
      */
     public ContextResource[] findResources() {
@@ -659,7 +657,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the resource environment reference type for the specified
+     * Return the resource environment reference type for the specified
      * name, if any; otherwise return <code>null</code>.
      *
      * @param name Name of the desired resource environment reference
@@ -674,7 +672,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the set of resource environment reference names for this
+     * Return the set of resource environment reference names for this
      * web application.  If none have been specified, a zero-length
      * array is returned.
      */
@@ -689,7 +687,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the web service reference for the specified
+     * Return the web service reference for the specified
      * name, if any; otherwise return <code>null</code>.
      *
      * @param name Name of the desired web service
@@ -704,7 +702,7 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
 
 
     /**
-     * @return the defined web service references for this application.  If
+     * Return the defined web service references for this application.  If
      * none have been defined, a zero-length array is returned.
      */
     public ContextService[] findServices() {
@@ -1042,16 +1040,21 @@ public class NamingResourcesImpl extends LifecycleMBeanBase
                     name, container, closeMethod));
             return;
         }
-        try {
-            m.invoke(resource, (Object[]) null);
-        } catch (IllegalArgumentException | IllegalAccessException e) {
-            log.warn(sm.getString("namingResources.cleanupCloseFailed",
-                    closeMethod, name, container), e);
-        } catch (InvocationTargetException e) {
-            Throwable t = ExceptionUtils.unwrapInvocationTargetException(e);
-            ExceptionUtils.handleThrowable(t);
-            log.warn(sm.getString("namingResources.cleanupCloseFailed",
-                    closeMethod, name, container), t);
+        if (m != null) {
+            try {
+                m.invoke(resource, (Object[]) null);
+            } catch (IllegalArgumentException e) {
+                log.warn(sm.getString("namingResources.cleanupCloseFailed",
+                        closeMethod, name, container), e);
+            } catch (IllegalAccessException e) {
+                log.warn(sm.getString("namingResources.cleanupCloseFailed",
+                        closeMethod, name, container), e);
+            } catch (InvocationTargetException e) {
+                Throwable t = ExceptionUtils.unwrapInvocationTargetException(e);
+                ExceptionUtils.handleThrowable(t);
+                log.warn(sm.getString("namingResources.cleanupCloseFailed",
+                        closeMethod, name, container), t);
+            }
         }
     }
 

@@ -28,15 +28,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Locale;
 
-import javax.servlet.annotation.ServletSecurity.TransportGuarantee;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
-import org.apache.catalina.CredentialHandler;
 import org.apache.catalina.Engine;
 import org.apache.catalina.Host;
 import org.apache.catalina.LifecycleException;
@@ -48,18 +46,16 @@ import org.apache.catalina.Wrapper;
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
 import org.apache.catalina.util.LifecycleMBeanBase;
+import org.apache.catalina.util.MD5Encoder;
 import org.apache.catalina.util.SessionConfig;
-import org.apache.catalina.util.ToStringUtil;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.util.IntrospectionUtils;
 import org.apache.tomcat.util.buf.B2CConverter;
 import org.apache.tomcat.util.buf.HexUtils;
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.apache.tomcat.util.descriptor.web.SecurityCollection;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
 import org.apache.tomcat.util.res.StringManager;
-import org.apache.tomcat.util.security.ConcurrentMessageDigest;
-import org.apache.tomcat.util.security.MD5Encoder;
 import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
@@ -76,17 +72,6 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
     private static final Log log = LogFactory.getLog(RealmBase.class);
 
-    private static final List<Class<? extends DigestCredentialHandlerBase>> credentialHandlerClasses =
-            new ArrayList<>();
-
-    static {
-        // Order is important since it determines the search order for a
-        // matching handler if only an algorithm is specified when calling
-        // main()
-        credentialHandlerClasses.add(MessageDigestCredentialHandler.class);
-        credentialHandlerClasses.add(SecretKeyCredentialHandler.class);
-    }
-
     // ----------------------------------------------------- Instance Variables
 
 
@@ -102,13 +87,37 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
     protected Log containerLog = null;
 
 
-    private CredentialHandler credentialHandler;
+    /**
+     * Digest algorithm used in storing passwords in a non-plaintext format.
+     * Valid values are those accepted for the algorithm name by the
+     * MessageDigest class, or <code>null</code> if no digesting should
+     * be performed.
+     */
+    protected String digest = null;
+
+    /**
+     * The encoding charset for the digest.
+     */
+    protected String digestEncoding = null;
+
+
+    /**
+     * The MessageDigest object for digesting user credentials (passwords).
+     */
+    protected volatile MessageDigest md = null;
+
+
+    /**
+     * MD5 message digest provider.
+     */
+    protected static volatile MessageDigest md5Helper;
 
 
     /**
      * The string manager for this package.
      */
-    protected static final StringManager sm = StringManager.getManager(RealmBase.class);
+    protected static final StringManager sm =
+        StringManager.getManager(Constants.Package);
 
 
     /**
@@ -146,44 +155,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
     protected boolean stripRealmForGss = true;
 
 
-    private int transportGuaranteeRedirectStatus = HttpServletResponse.SC_FOUND;
-
-
     // ------------------------------------------------------------- Properties
-
-
-    /**
-     * @return The HTTP status code used when the container needs to issue an
-     *         HTTP redirect to meet the requirements of a configured transport
-     *         guarantee.
-     */
-    public int getTransportGuaranteeRedirectStatus() {
-        return transportGuaranteeRedirectStatus;
-    }
-
-
-    /**
-     * Set the HTTP status code used when the container needs to issue an HTTP
-     * redirect to meet the requirements of a configured transport guarantee.
-     *
-     * @param transportGuaranteeRedirectStatus The status to use. This value is
-     *                                         not validated
-     */
-    public void setTransportGuaranteeRedirectStatus(int transportGuaranteeRedirectStatus) {
-        this.transportGuaranteeRedirectStatus = transportGuaranteeRedirectStatus;
-    }
-
-
-    @Override
-    public CredentialHandler getCredentialHandler() {
-        return credentialHandler;
-    }
-
-
-    @Override
-    public void setCredentialHandler(CredentialHandler credentialHandler) {
-        this.credentialHandler = credentialHandler;
-    }
 
 
     /**
@@ -191,7 +163,9 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      */
     @Override
     public Container getContainer() {
-        return container;
+
+        return (container);
+
     }
 
 
@@ -211,28 +185,78 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
     /**
      * Return the all roles mode.
-     * @return A string representation of the current all roles mode
      */
     public String getAllRolesMode() {
+
         return allRolesMode.toString();
+
     }
 
 
     /**
      * Set the all roles mode.
-     * @param allRolesMode A string representation of the new all roles mode
      */
     public void setAllRolesMode(String allRolesMode) {
+
         this.allRolesMode = AllRolesMode.toMode(allRolesMode);
+
+    }
+
+    /**
+     * Return the digest algorithm  used for storing credentials.
+     */
+    public String getDigest() {
+
+        return digest;
+
+    }
+
+
+    /**
+     * Set the digest algorithm used for storing credentials.
+     *
+     * @param digest The new digest algorithm
+     */
+    public void setDigest(String digest) {
+
+        this.digest = digest;
+
+    }
+
+    /**
+     * Returns the digest encoding charset.
+     *
+     * @return The charset (may be null) for platform default
+     */
+    public String getDigestEncoding() {
+        return digestEncoding;
+    }
+
+    /**
+     * Sets the digest encoding charset.
+     *
+     * @param charset The charset (null for platform default)
+     */
+    public void setDigestEncoding(String charset) {
+        digestEncoding = charset;
+    }
+
+    protected Charset getDigestCharset() throws UnsupportedEncodingException {
+        if (digestEncoding == null) {
+            return StandardCharsets.ISO_8859_1;
+        } else {
+            return B2CConverter.getCharset(getDigestEncoding());
+        }
     }
 
 
     /**
      * Return the "validate certificate chains" flag.
-     * @return The value of the validate certificate chains flag
      */
     public boolean getValidate() {
-        return validate;
+
+        return (this.validate);
+
     }
 
 
@@ -297,20 +321,29 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
 
     /**
-     * Return the Principal associated with the specified username, if there
-     * is one; otherwise return <code>null</code>.
+     * Return the Principal associated with the specified username and
+     * credentials, if there is one; otherwise return <code>null</code>.
      *
      * @param username Username of the Principal to look up
+     * @param credentials Password or other credentials to use in
+     *  authenticating this username
      */
     @Override
-    public Principal authenticate(String username) {
+    public Principal authenticate(String username, String credentials) {
 
-        if (username == null) {
+        String serverCredentials = getPassword(username);
+
+        boolean validated = compareCredentials(credentials, serverCredentials);
+        if (!validated) {
+            if (containerLog.isTraceEnabled()) {
+                containerLog.trace(sm.getString("realmBase.authenticateFailure",
+                                                username));
+            }
             return null;
         }
-
         if (containerLog.isTraceEnabled()) {
-            containerLog.trace(sm.getString("realmBase.authenticateSuccess", username));
+            containerLog.trace(sm.getString("realmBase.authenticateSuccess",
+                                            username));
         }
 
         return getPrincipal(username);
@@ -318,75 +351,17 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
 
     /**
-     * Return the Principal associated with the specified username and
-     * credentials, if there is one; otherwise return <code>null</code>.
-     *
-     * @param username Username of the Principal to look up
-     * @param credentials Password or other credentials to use in
-     *  authenticating this username
-     * @return the associated principal, or <code>null</code> if there is none.
-     */
-    @Override
-    public Principal authenticate(String username, String credentials) {
-        // No user or no credentials
-        // Can't possibly authenticate, don't bother doing anything.
-        if(username == null || credentials == null) {
-            if (containerLog.isTraceEnabled()) {
-                containerLog.trace(sm.getString("realmBase.authenticateFailure",
-                                                username));
-            }
-            return null;
-        }
-
-        // Look up the user's credentials
-        String serverCredentials = getPassword(username);
-
-        if (serverCredentials == null) {
-            // User was not found
-            // Waste a bit of time as not to reveal that the user does not exist.
-            getCredentialHandler().mutate(credentials);
-
-            if (containerLog.isTraceEnabled()) {
-                containerLog.trace(sm.getString("realmBase.authenticateFailure",
-                                                username));
-            }
-            return null;
-        }
-
-        boolean validated = getCredentialHandler().matches(credentials, serverCredentials);
-
-        if (validated) {
-            if (containerLog.isTraceEnabled()) {
-                containerLog.trace(sm.getString("realmBase.authenticateSuccess",
-                                                username));
-            }
-            return getPrincipal(username);
-        } else {
-            if (containerLog.isTraceEnabled()) {
-                containerLog.trace(sm.getString("realmBase.authenticateFailure",
-                                                username));
-            }
-            return null;
-        }
-    }
-
-    /**
-     * Try to authenticate with the specified username, which
+     * Return the Principal associated with the specified username, which
      * matches the digest calculated using the given parameters using the
-     * method described in RFC 2617 (which is a superset of RFC 2069).
+     * method described in RFC 2069; otherwise return <code>null</code>.
      *
      * @param username Username of the Principal to look up
      * @param clientDigest Digest which has been submitted by the client
      * @param nonce Unique (or supposedly unique) token which has been used
      * for this request
-     * @param nc the nonce counter
-     * @param cnonce the client chosen nonce
-     * @param qop the "quality of protection" (<code>nc</code> and <code>cnonce</code>
-     *        will only be used, if <code>qop</code> is not <code>null</code>).
      * @param realm Realm name
      * @param md5a2 Second MD5 digest used to calculate the digest :
      * MD5(Method + ":" + uri)
-     * @return the associated principal, or <code>null</code> if there is none.
      */
     @Override
     public Principal authenticate(String username, String clientDigest,
@@ -415,11 +390,15 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             throw new IllegalArgumentException(uee.getMessage());
         }
 
-        String serverDigest = MD5Encoder.encode(ConcurrentMessageDigest.digestMD5(valueBytes));
+        String serverDigest = null;
+        // Bugzilla 32137
+        synchronized(md5Helper) {
+            serverDigest = MD5Encoder.encode(md5Helper.digest(valueBytes));
+        }
 
         if (log.isDebugEnabled()) {
             log.debug("Digest : " + clientDigest + " Username:" + username
-                    + " ClientDigest:" + clientDigest + " nonce:" + nonce
+                    + " ClientSigest:" + clientDigest + " nonce:" + nonce
                     + " nc:" + nc + " cnonce:" + cnonce + " qop:" + qop
                     + " realm:" + realm + "md5a2:" + md5a2
                     + " Server digest:" + serverDigest);
@@ -444,7 +423,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
     public Principal authenticate(X509Certificate certs[]) {
 
         if ((certs == null) || (certs.length < 1))
-            return null;
+            return (null);
 
         // Check the validity of each certificate in the chain
         if (log.isDebugEnabled())
@@ -459,13 +438,14 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
                 } catch (Exception e) {
                     if (log.isDebugEnabled())
                         log.debug("  Validity exception", e);
-                    return null;
+                    return (null);
                 }
             }
         }
 
         // Check the existence of the client Principal in our database
-        return getPrincipal(certs[0]);
+        return (getPrincipal(certs[0]));
+
     }
 
 
@@ -473,7 +453,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      * {@inheritDoc}
      */
     @Override
-    public Principal authenticate(GSSContext gssContext, boolean storeCreds) {
+    public Principal authenticate(GSSContext gssContext, boolean storeCred) {
         if (gssContext.isEstablished()) {
             GSSName gssName = null;
             try {
@@ -493,7 +473,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
                     }
                 }
                 GSSCredential gssCredential = null;
-                if (storeCreds && gssContext.getCredDelegState()) {
+                if (storeCred && gssContext.getCredDelegState()) {
                     try {
                         gssCredential = gssContext.getDelegCred();
                     } catch (GSSException e) {
@@ -506,12 +486,76 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
                 }
                 return getPrincipal(name, gssCredential);
             }
-        } else {
-            log.error(sm.getString("realmBase.gssContextNotEstablished"));
         }
 
         // Fail in all other cases
         return null;
+    }
+
+
+    protected boolean compareCredentials(String userCredentials,
+            String serverCredentials) {
+
+        if (serverCredentials == null) {
+            return false;
+        }
+
+        if (hasMessageDigest()) {
+            // Some directories and databases prefix the password with the hash
+            // type. The string is in a format compatible with Base64.encode not
+            // the normal hex encoding of the digest
+            if (serverCredentials.startsWith("{MD5}") ||
+                    serverCredentials.startsWith("{SHA}")) {
+                // Server is storing digested passwords with a prefix indicating
+                // the digest type
+                String serverDigest = serverCredentials.substring(5);
+                String userDigest;
+                synchronized (this) {
+                    md.reset();
+                    md.update(userCredentials.getBytes(StandardCharsets.ISO_8859_1));
+                    userDigest = Base64.encodeBase64String(md.digest());
+                }
+                return userDigest.equals(serverDigest);
+
+            } else if (serverCredentials.startsWith("{SSHA}")) {
+                // Server is storing digested passwords with a prefix indicating
+                // the digest type and the salt used when creating that digest
+
+                String serverDigestPlusSalt = serverCredentials.substring(6);
+
+                // Need to convert the salt to bytes to apply it to the user's
+                // digested password.
+                byte[] serverDigestPlusSaltBytes =
+                        Base64.decodeBase64(serverDigestPlusSalt);
+                final int saltPos = 20;
+                byte[] serverDigestBytes = new byte[saltPos];
+                System.arraycopy(serverDigestPlusSaltBytes, 0,
+                        serverDigestBytes, 0, saltPos);
+
+                // Generate the digested form of the user provided password
+                // using the salt
+                byte[] userDigestBytes;
+                synchronized (this) {
+                    md.reset();
+                    // User provided password
+                    md.update(userCredentials.getBytes(StandardCharsets.ISO_8859_1));
+                    // Add the salt
+                    md.update(serverDigestPlusSaltBytes, saltPos,
+                            serverDigestPlusSaltBytes.length - saltPos);
+                    userDigestBytes = md.digest();
+                }
+
+                return Arrays.equals(userDigestBytes, serverDigestBytes);
+
+            } else {
+                // Hex hashes should be compared case-insensitively
+                String userDigest = digest(userCredentials);
+                return serverCredentials.equalsIgnoreCase(userDigest);
+            }
+        } else {
+            // No digests, compare directly
+            return serverCredentials.equals(userCredentials);
+        }
     }
 
 
@@ -543,7 +587,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         if ((constraints == null) || (constraints.length == 0)) {
             if (log.isDebugEnabled())
                 log.debug("  No applicable constraints defined");
-            return null;
+            return (null);
         }
 
         // Check each defined security constraint
@@ -697,8 +741,8 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
                 for(int k=0; k < patterns.length && !matched; k++) {
                     String pattern = patterns[k];
                     if(pattern.startsWith("*.")){
-                        int slash = uri.lastIndexOf('/');
-                        int dot = uri.lastIndexOf('.');
+                        int slash = uri.lastIndexOf("/");
+                        int dot = uri.lastIndexOf(".");
                         if(slash >= 0 && dot > slash &&
                            dot != uri.length()-1 &&
                            uri.length()-dot == pattern.length()-1) {
@@ -774,7 +818,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
     }
 
     /**
-     * Convert an ArrayList to a SecurityConstraint [].
+     * Convert an ArrayList to a SecurityContraint [].
      */
     private SecurityConstraint [] resultsToArray(
             ArrayList<SecurityConstraint> results) {
@@ -807,7 +851,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         throws IOException {
 
         if (constraints == null || constraints.length == 0)
-            return true;
+            return (true);
 
         // Which user principal have we already authenticated?
         Principal principal = request.getPrincipal();
@@ -908,30 +952,32 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
 
     /**
-     * {@inheritDoc}
+     * Return <code>true</code> if the specified Principal has the specified
+     * security role, within the context of this Realm; otherwise return
+     * <code>false</code>.  This method can be overridden by Realm
+     * implementations, but the default is adequate when an instance of
+     * <code>GenericPrincipal</code> is used to represent authenticated
+     * Principals from this Realm.
      *
-     * This method or {@link #hasRoleInternal(Principal,
-     * String)} can be overridden by Realm implementations, but the default is
-     * adequate when an instance of <code>GenericPrincipal</code> is used to
-     * represent authenticated Principals from this Realm.
+     * @param principal Principal for whom the role is to be checked
+     * @param role Security role to be checked
      */
     @Override
     public boolean hasRole(Wrapper wrapper, Principal principal, String role) {
         // Check for a role alias defined in a <security-role-ref> element
         if (wrapper != null) {
             String realRole = wrapper.findSecurityReference(role);
-            if (realRole != null) {
+            if (realRole != null)
                 role = realRole;
-            }
         }
 
         // Should be overridden in JAASRealm - to avoid pretty inefficient conversions
-        if (principal == null || role == null) {
-            return false;
-        }
+        if ((principal == null) || (role == null) ||
+            !(principal instanceof GenericPrincipal))
+            return (false);
 
-        boolean result = hasRoleInternal(principal, role);
-
+        GenericPrincipal gp = (GenericPrincipal) principal;
+        boolean result = gp.hasRole(role);
         if (log.isDebugEnabled()) {
             String name = principal.getName();
             if (result)
@@ -939,35 +985,8 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             else
                 log.debug(sm.getString("realmBase.hasRoleFailure", name, role));
         }
+        return (result);
 
-        return result;
-    }
-
-
-    /**
-     * Check if the specified Principal has the specified
-     * security role, within the context of this Realm.
-     *
-     * This method or {@link #hasRoleInternal(Principal,
-     * String)} can be overridden by Realm implementations, but the default is
-     * adequate when an instance of <code>GenericPrincipal</code> is used to
-     * represent authenticated Principals from this Realm.
-     *
-     * @param principal Principal for whom the role is to be checked
-     * @param role Security role to be checked
-     *
-     * @return <code>true</code> if the specified Principal has the specified
-     *         security role, within the context of this Realm; otherwise return
-     *         <code>false</code>.
-     */
-    protected boolean hasRoleInternal(Principal principal, String role) {
-        // Should be overridden in JAASRealm - to avoid pretty inefficient conversions
-        if (!(principal instanceof GenericPrincipal)) {
-            return false;
-        }
-
-        GenericPrincipal gp = (GenericPrincipal) principal;
-        return gp.hasRole(role);
     }
 
 
@@ -993,7 +1012,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         if (constraints == null || constraints.length == 0) {
             if (log.isDebugEnabled())
                 log.debug("  No applicable security constraint defined");
-            return true;
+            return (true);
         }
         for(int i=0; i < constraints.length; i++) {
             SecurityConstraint constraint = constraints[i];
@@ -1001,12 +1020,12 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             if (userConstraint == null) {
                 if (log.isDebugEnabled())
                     log.debug("  No applicable user data constraint defined");
-                return true;
+                return (true);
             }
-            if (userConstraint.equals(TransportGuarantee.NONE.name())) {
+            if (userConstraint.equals(Constants.NONE_TRANSPORT)) {
                 if (log.isDebugEnabled())
                     log.debug("  User data constraint has no restrictions");
-                return true;
+                return (true);
             }
 
         }
@@ -1014,7 +1033,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         if (request.getRequest().isSecure()) {
             if (log.isDebugEnabled())
                 log.debug("  User data constraint already satisfied");
-            return true;
+            return (true);
         }
         // Initialize variables we need to determine the appropriate action
         int redirectPort = request.getConnector().getRedirectPort();
@@ -1026,7 +1045,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             response.sendError
                 (HttpServletResponse.SC_FORBIDDEN,
                  request.getRequestURI());
-            return false;
+            return (false);
         }
 
         // Redirect to the corresponding SSL port
@@ -1057,8 +1076,8 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         }
         if (log.isDebugEnabled())
             log.debug("  Redirecting to " + file.toString());
-        response.sendRedirect(file.toString(), transportGuaranteeRedirectStatus);
-        return false;
+        response.sendRedirect(file.toString());
+        return (false);
 
     }
 
@@ -1099,8 +1118,15 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      */
     @Override
     protected void startInternal() throws LifecycleException {
-        if (credentialHandler == null) {
-            credentialHandler = new MessageDigestCredentialHandler();
+
+        // Create a MessageDigest instance for credentials, if desired
+        if (digest != null) {
+            try {
+                md = MessageDigest.getInstance(digest);
+            } catch (NoSuchAlgorithmException e) {
+                throw new LifecycleException
+                    (sm.getString("realmBase.algorithm", digest), e);
+            }
         }
 
         setState(LifecycleState.STARTING);
@@ -1117,7 +1143,11 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      */
     @Override
     protected void stopInternal() throws LifecycleException {
+
         setState(LifecycleState.STOPPING);
+
+        // Clean up allocated resources
+        md = null;
     }
 
 
@@ -1126,28 +1156,70 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      */
     @Override
     public String toString() {
-        return ToStringUtil.toString(this);
+        StringBuilder sb = new StringBuilder("Realm[");
+        sb.append(getName());
+        sb.append(']');
+        return sb.toString();
     }
 
 
     // ------------------------------------------------------ Protected Methods
 
-    protected boolean hasMessageDigest() {
-        CredentialHandler ch = credentialHandler;
-        if (ch instanceof MessageDigestCredentialHandler) {
-            return ((MessageDigestCredentialHandler) ch).getAlgorithm() != null;
+
+    /**
+     * Digest the password using the specified algorithm and
+     * convert the result to a corresponding hexadecimal string.
+     * If exception, the plain credentials string is returned.
+     *
+     * @param credentials Password or other credentials to use in
+     *  authenticating this username
+     */
+    protected String digest(String credentials)  {
+
+        // If no MessageDigest instance is specified, return unchanged
+        if (hasMessageDigest() == false)
+            return (credentials);
+
+        // Digest the user credentials and return as hexadecimal
+        synchronized (this) {
+            try {
+                md.reset();
+
+                byte[] bytes = null;
+                try {
+                    bytes = credentials.getBytes(getDigestCharset());
+                } catch (UnsupportedEncodingException uee) {
+                    log.error("Illegal digestEncoding: " + getDigestEncoding(), uee);
+                    throw new IllegalArgumentException(uee.getMessage());
+                }
+                md.update(bytes);
+
+                return (HexUtils.toHexString(md.digest()));
+            } catch (Exception e) {
+                log.error(sm.getString("realmBase.digest"), e);
+                return (credentials);
+            }
         }
-        return false;
+
     }
 
+    protected boolean hasMessageDigest() {
+        return !(md == null);
+    }
 
     /**
      * Return the digest associated with given principal's user name.
-     * @param username the user name
-     * @param realmName the realm name
-     * @return the digest for the specified user
      */
     protected String getDigest(String username, String realmName) {
+        if (md5Helper == null) {
+            try {
+                md5Helper = MessageDigest.getInstance("MD5");
+            } catch (NoSuchAlgorithmException e) {
+                log.error("Couldn't get MD5 digest: ", e);
+                throw new IllegalStateException(e.getMessage());
+            }
+        }
+
         if (hasMessageDigest()) {
             // Use pre-generated digest
             return getPassword(username);
@@ -1164,41 +1236,31 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             throw new IllegalArgumentException(uee.getMessage());
         }
 
-        return MD5Encoder.encode(ConcurrentMessageDigest.digestMD5(valueBytes));
-    }
-
-
-    private String getDigestEncoding() {
-        CredentialHandler ch = credentialHandler;
-        if (ch instanceof MessageDigestCredentialHandler) {
-            return ((MessageDigestCredentialHandler) ch).getEncoding();
+        byte[] digest;
+        // Bugzilla 32137
+        synchronized(md5Helper) {
+            digest = md5Helper.digest(valueBytes);
         }
-        return null;
-    }
 
-
-    private Charset getDigestCharset() throws UnsupportedEncodingException {
-        String charset = getDigestEncoding();
-        if (charset == null) {
-            return StandardCharsets.ISO_8859_1;
-        } else {
-            return B2CConverter.getCharset(charset);
-        }
+        return MD5Encoder.encode(digest);
     }
 
 
     /**
-     * Get the password for the specified user.
-     * @param username The user name
-     * @return the password associated with the given principal's user name.
+     * Return a short name for this Realm implementation, for use in
+     * log messages.
+     */
+    protected abstract String getName();
+
+
+    /**
+     * Return the password associated with the given principal's user name.
      */
     protected abstract String getPassword(String username);
 
 
     /**
-     * Get the principal associated with the specified certificate.
-     * @param usercert The user certificate
-     * @return the Principal associated with the given certificate.
+     * Return the Principal associated with the given certificate.
      */
     protected Principal getPrincipal(X509Certificate usercert) {
         String username = x509UsernameRetriever.getUsername(usercert);
@@ -1206,14 +1268,12 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         if(log.isDebugEnabled())
             log.debug(sm.getString("realmBase.gotX509Username", username));
 
-        return getPrincipal(username);
+        return(getPrincipal(username));
     }
 
 
     /**
-     * Get the principal associated with the specified user.
-     * @param username The user name
-     * @return the Principal associated with the given user name.
+     * Return the Principal associated with the given user name.
      */
     protected abstract Principal getPrincipal(String username);
 
@@ -1234,7 +1294,6 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
      * with which this Realm is associated. If the server cannot be found (eg
      * because the container hierarchy is not complete), <code>null</code> is
      * returned.
-     * @return the Server associated with the realm
      */
     protected Server getServer() {
         Container c = container;
@@ -1256,17 +1315,16 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
     // --------------------------------------------------------- Static Methods
 
+
     /**
-     * Digest password using the algorithm specified and convert the result to a
-     * corresponding hex string.
+     * Digest password using the algorithm specified and
+     * convert the result to a corresponding hex string.
+     * If exception, the plain credentials string is returned
      *
-     * @param credentials Password or other credentials to use in authenticating
-     *                    this username
-     * @param algorithm   Algorithm used to do the digest
-     * @param encoding    Character encoding of the string to digest
-     *
-     * @return The digested credentials as a hex string or the original plain
-     *         text credentials if an error occurs.
+     * @param credentials Password or other credentials to use in
+     *  authenticating this username
+     * @param algorithm Algorithm used to do the digest
+     * @param encoding Character encoding of the string to digest
      */
     public static final String Digest(String credentials, String algorithm,
                                       String encoding) {
@@ -1285,7 +1343,7 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
             }
 
             // Digest the credentials and return as hexadecimal
-            return HexUtils.toHexString(md.digest());
+            return (HexUtils.toHexString(md.digest()));
         } catch(Exception ex) {
             log.error(ex);
             return credentials;
@@ -1295,160 +1353,30 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
 
 
     /**
-     * Generate a stored credential string for the given password and associated
-     * parameters.
-     * <p>The following parameters are supported:</p>
-     * <ul>
-     * <li><b>-a</b> - The algorithm to use to generate the stored
-     *                 credential. If not specified a default of SHA-512 will be
-     *                 used.</li>
-     * <li><b>-e</b> - The encoding to use for any byte to/from character
-     *                 conversion that may be necessary. If not specified, the
-     *                 system encoding ({@link Charset#defaultCharset()}) will
-     *                 be used.</li>
-     * <li><b>-i</b> - The number of iterations to use when generating the
-     *                 stored credential. If not specified, the default for the
-     *                 CredentialHandler will be used.</li>
-     * <li><b>-s</b> - The length (in bytes) of salt to generate and store as
-     *                 part of the credential. If not specified, the default for
-     *                 the CredentialHandler will be used.</li>
-     * <li><b>-k</b> - The length (in bits) of the key(s), if any, created while
-     *                 generating the credential. If not specified, the default
-     *                 for the CredentialHandler will be used.</li>
-     * <li><b>-h</b> - The fully qualified class name of the CredentialHandler
-     *                 to use. If not specified, the built-in handlers will be
-     *                 tested in turn and the first one to accept the specified
-     *                 algorithm will be used.</li>
-     * </ul>
-     * <p>This generation process currently supports the following
-     * CredentialHandlers, the correct one being selected based on the algorithm
-     * specified:</p>
-     * <ul>
-     * <li>{@link MessageDigestCredentialHandler}</li>
-     * <li>{@link SecretKeyCredentialHandler}</li>
-     * </ul>
-     * @param args The parameters passed on the command line
+     * Digest password using the algorithm specified and
+     * convert the result to a corresponding hex string.
+     * If exception, the plain credentials string is returned
      */
     public static void main(String args[]) {
 
-        // Use negative values since null is not an option to indicate 'not set'
-        int saltLength = -1;
-        int iterations = -1;
-        int keyLength = -1;
-        // Default
-        String encoding = Charset.defaultCharset().name();
-        // Default values for these depend on whether either of them are set on
-        // the command line
-        String algorithm = null;
-        String handlerClassName = null;
+        String encoding = null;
+        int firstCredentialArg = 2;
 
-        if (args.length == 0) {
-            usage();
-            return;
+        if (args.length > 4 && args[2].equalsIgnoreCase("-e")) {
+            encoding = args[3];
+            firstCredentialArg = 4;
         }
 
-        int argIndex = 0;
-
-        while (args.length > argIndex + 2 && args[argIndex].length() == 2 &&
-                args[argIndex].charAt(0) == '-' ) {
-            switch (args[argIndex].charAt(1)) {
-            case 'a': {
-                algorithm = args[argIndex + 1];
-                break;
-            }
-            case 'e': {
-                encoding = args[argIndex + 1];
-                break;
-            }
-            case 'i': {
-                iterations = Integer.parseInt(args[argIndex + 1]);
-                break;
-            }
-            case 's': {
-                saltLength = Integer.parseInt(args[argIndex + 1]);
-                break;
-            }
-            case 'k': {
-                keyLength = Integer.parseInt(args[argIndex + 1]);
-                break;
-            }
-            case 'h': {
-                handlerClassName = args[argIndex + 1];
-                break;
-            }
-            default: {
-                usage();
-                return;
-            }
-            }
-            argIndex += 2;
-        }
-
-        // Determine defaults for -a and -h. The rules are more complex to
-        // express than the implementation:
-        // - if neither -a nor -h is set, use SHA-512 and
-        //   MessageDigestCredentialHandler
-        // - if only -a is set the built-in handlers will be searched in order
-        //   (MessageDigestCredentialHandler, SecretKeyCredentialHandler) and
-        //   the first handler that supports the algorithm will be used
-        // - if only -h is set no default will be used for -a. The handler may
-        //   or may nor support -a and may or may not supply a sensible default
-        if (algorithm == null && handlerClassName == null) {
-            algorithm = "SHA-512";
-        }
-
-        CredentialHandler handler = null;
-
-        if (handlerClassName == null) {
-            for (Class<? extends DigestCredentialHandlerBase> clazz : credentialHandlerClasses) {
-                try {
-                    handler = clazz.newInstance();
-                    if (IntrospectionUtils.setProperty(handler, "algorithm", algorithm)) {
-                        break;
-                    }
-                } catch (InstantiationException | IllegalAccessException e) {
-                    // This isn't good.
-                    throw new RuntimeException(e);
-                }
+        if(args.length > firstCredentialArg && args[0].equalsIgnoreCase("-a")) {
+            for(int i=firstCredentialArg; i < args.length ; i++){
+                System.out.print(args[i]+":");
+                System.out.println(Digest(args[i], args[1], encoding));
             }
         } else {
-            try {
-                Class<?> clazz = Class.forName(handlerClassName);
-                handler = (DigestCredentialHandlerBase) clazz.newInstance();
-                IntrospectionUtils.setProperty(handler, "algorithm", algorithm);
-            } catch (InstantiationException | IllegalAccessException
-                    | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println
+                ("Usage: RealmBase -a <algorithm> [-e <encoding>] <credentials>");
         }
 
-        if (handler == null) {
-            throw new RuntimeException(new NoSuchAlgorithmException(algorithm));
-        }
-
-        IntrospectionUtils.setProperty(handler, "encoding", encoding);
-        if (iterations > 0) {
-            IntrospectionUtils.setProperty(handler, "iterations", Integer.toString(iterations));
-        }
-        if (saltLength > -1) {
-            IntrospectionUtils.setProperty(handler, "saltLength", Integer.toString(saltLength));
-        }
-        if (keyLength > 0) {
-            IntrospectionUtils.setProperty(handler, "keyLength", Integer.toString(keyLength));
-        }
-
-        for (; argIndex < args.length; argIndex++) {
-            String credential = args[argIndex];
-            System.out.print(credential + ":");
-            System.out.println(handler.mutate(credential));
-        }
-    }
-
-
-    private static void usage() {
-        System.out.println("Usage: RealmBase [-a <algorithm>] [-e <encoding>] " +
-                "[-i <iterations>] [-s <salt-length>] [-k <key-length>] " +
-                "[-h <handler-class-name>] <credentials>");
     }
 
 
@@ -1558,16 +1486,5 @@ public abstract class RealmBase extends LifecycleMBeanBase implements Realm {
         } catch (ClassCastException e) {
             throw new LifecycleException(sm.getString("realmBase.createUsernameRetriever.ClassCastException", className), e);
         }
-    }
-
-
-    @Override
-    public String[] getRoles(Principal principal) {
-        if (principal instanceof GenericPrincipal) {
-            return ((GenericPrincipal) principal).getRoles();
-        }
-
-        String className = principal.getClass().getSimpleName();
-        throw new IllegalStateException(sm.getString("realmBase.cannotGetRoles", className));
     }
 }

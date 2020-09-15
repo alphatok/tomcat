@@ -22,7 +22,7 @@ import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleListener;
 import org.apache.catalina.LifecycleState;
-import org.apache.tomcat.unittest.TesterContext;
+import org.apache.catalina.core.TesterContext;
 
 /**
  * Minimal implementation for use in unit tests that supports main and pre

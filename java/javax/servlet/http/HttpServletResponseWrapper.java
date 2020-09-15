@@ -18,8 +18,6 @@ package javax.servlet.http;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
-import java.util.function.Supplier;
 
 import javax.servlet.ServletResponseWrapper;
 
@@ -37,8 +35,6 @@ public class HttpServletResponseWrapper extends ServletResponseWrapper
 
     /**
      * Constructs a response adaptor wrapping the given response.
-     *
-     * @param response The response to be wrapped
      *
      * @throws java.lang.IllegalArgumentException
      *             if the response is null
@@ -94,7 +90,8 @@ public class HttpServletResponseWrapper extends ServletResponseWrapper
      * @deprecated As of Version 3.0 of the Java Servlet API
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("dep-ann")
+    // Spec API does not use @Deprecated
     public String encodeUrl(String url) {
         return this._getHttpServletResponse().encodeUrl(url);
     }
@@ -106,7 +103,8 @@ public class HttpServletResponseWrapper extends ServletResponseWrapper
      * @deprecated As of Version 3.0 of the Java Servlet API
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("dep-ann")
+    // Spec API does not use @Deprecated
     public String encodeRedirectUrl(String url) {
         return this._getHttpServletResponse().encodeRedirectUrl(url);
     }
@@ -208,7 +206,8 @@ public class HttpServletResponseWrapper extends ServletResponseWrapper
      * @deprecated As of Version 3.0 of the Java Servlet API
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("dep-ann")
+    // Spec API does not use @Deprecated
     public void setStatus(int sc, String sm) {
         this._getHttpServletResponse().setStatus(sc, sm);
     }
@@ -267,19 +266,5 @@ public class HttpServletResponseWrapper extends ServletResponseWrapper
     @Override
     public Collection<String> getHeaderNames() {
         return this._getHttpServletResponse().getHeaderNames();
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The default implementation is to call
-     * {@link HttpServletResponse#setTrailerFields(Supplier)}
-     * on the wrapper {@link HttpServletResponse}.
-     *
-     * @since Servlet 4.0
-     */
-    @Override
-    public void setTrailerFields(Supplier<Map<String, String>> supplier) {
-        this._getHttpServletResponse().setTrailerFields(supplier);
     }
 }

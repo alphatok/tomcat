@@ -21,16 +21,11 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import javax.servlet.jsp.tagext.FunctionInfo;
 
 import org.apache.jasper.Constants;
 import org.apache.jasper.JasperException;
-import org.apache.tomcat.util.security.PrivilegedGetTccl;
 
 /**
  * This class generates functions mappers for the EL expressions in the page.
@@ -50,7 +45,6 @@ public class ELFunctionMapper {
      * Creates the functions mappers for all EL expressions in the JSP page.
      *
      * @param page The current compilation unit.
-     * @throws JasperException EL error
      */
     public static void map(Node.Nodes page)
                 throws JasperException {
@@ -82,7 +76,7 @@ public class ELFunctionMapper {
          * Use a global name map to facilitate reuse of function maps.
          * The key used is prefix:function:uri.
          */
-        private final Map<String, String> gMap = new HashMap<>();
+        private final HashMap<String, String> gMap = new HashMap<>();
 
         @Override
         public void visit(Node.ParamAction n) throws JasperException {
@@ -171,12 +165,14 @@ public class ELFunctionMapper {
 
             // Only care about functions in ELNode's
             class Fvisitor extends ELNode.Visitor {
-                private final List<ELNode.Function> funcs = new ArrayList<>();
-                private final Set<String> keySet = new HashSet<>();
+                private final ArrayList<ELNode.Function> funcs =
+                        new ArrayList<>();
+                private final HashMap<String, String> keyMap = new HashMap<>();
                 @Override
                 public void visit(ELNode.Function n) throws JasperException {
                     String key = n.getPrefix() + ":" + n.getName();
-                    if (keySet.add(key)) {
+                    if (! keyMap.containsKey(key)) {
+                        keyMap.put(key,"");
                         funcs.add(n);
                     }
                 }
@@ -189,7 +185,7 @@ public class ELFunctionMapper {
             // First locate all unique functions in this EL
             Fvisitor fv = new Fvisitor();
             el.visit(fv);
-            List<ELNode.Function> functions = fv.funcs;
+            ArrayList<ELNode.Function> functions = fv.funcs;
 
             if (functions.size() == 0) {
                 return;
@@ -219,51 +215,47 @@ public class ELFunctionMapper {
             }
 
             // Setup arguments for either getMapForFunction or mapFunction
-            for (ELNode.Function f : functions) {
+            for (int i = 0; i < functions.size(); i++) {
+                ELNode.Function f = functions.get(i);
                 FunctionInfo funcInfo = f.getFunctionInfo();
-                String fnQName = f.getPrefix() + ":" + f.getName();
-                if (funcInfo == null) {
-                    // Added via Lambda or ImportHandler. EL will expect a
-                    // function mapper even if one isn't used so just pass null
-                    ds.append(funcMethod + "(null, null, null, null);\n");
-                } else {
-                    ds.append(funcMethod + "(\"" + fnQName + "\", " +
-                            getCanonicalName(funcInfo.getFunctionClass()) +
-                            ".class, " + '\"' + f.getMethodName() + "\", " +
-                            "new Class[] {");
-                    String params[] = f.getParameters();
-                    for (int k = 0; k < params.length; k++) {
-                        if (k != 0) {
-                            ds.append(", ");
-                        }
-                        int iArray = params[k].indexOf('[');
-                        if (iArray < 0) {
-                            ds.append(params[k] + ".class");
-                        }
-                        else {
-                            String baseType = params[k].substring(0, iArray);
-                            ds.append("java.lang.reflect.Array.newInstance(");
-                            ds.append(baseType);
-                            ds.append(".class,");
+                String key = f.getPrefix()+ ":" + f.getName();
+                ds.append(funcMethod + "(\"" + key + "\", " +
+                        getCanonicalName(funcInfo.getFunctionClass()) +
+                        ".class, " + '\"' + f.getMethodName() + "\", " +
+                        "new Class[] {");
+                String params[] = f.getParameters();
+                for (int k = 0; k < params.length; k++) {
+                    if (k != 0) {
+                        ds.append(", ");
+                    }
+                    int iArray = params[k].indexOf('[');
+                    if (iArray < 0) {
+                        ds.append(params[k] + ".class");
+                    }
+                    else {
+                        String baseType = params[k].substring(0, iArray);
+                        ds.append("java.lang.reflect.Array.newInstance(");
+                        ds.append(baseType);
+                        ds.append(".class,");
 
-                            // Count the number of array dimension
-                            int aCount = 0;
-                            for (int jj = iArray; jj < params[k].length(); jj++ ) {
-                                if (params[k].charAt(jj) == '[') {
-                                    aCount++;
-                                }
+                        // Count the number of array dimension
+                        int aCount = 0;
+                        for (int jj = iArray; jj < params[k].length(); jj++ ) {
+                            if (params[k].charAt(jj) == '[') {
+                                aCount++;
                             }
-                            if (aCount == 1) {
-                                ds.append("0).getClass()");
-                            } else {
-                                ds.append("new int[" + aCount + "]).getClass()");
-                            }
+                        }
+                        if (aCount == 1) {
+                            ds.append("0).getClass()");
+                        } else {
+                            ds.append("new int[" + aCount + "]).getClass()");
                         }
                     }
-                    ds.append("});\n");
                 }
+                ds.append("});\n");
                 // Put the current name in the global function map
-                gMap.put(fnQName + ':' + f.getUri(), decName);
+                gMap.put(f.getPrefix() + ':' + f.getName() + ':' + f.getUri(),
+                         decName);
             }
             el.setMapName(decName);
         }
@@ -271,15 +263,16 @@ public class ELFunctionMapper {
         /**
          * Find the name of the function mapper for an EL.  Reuse a
          * previously generated one if possible.
-         * @param functions A List of ELNode.Function instances that
+         * @param functions An ArrayList of ELNode.Function instances that
          *                  represents the functions in an EL
          * @return A previous generated function mapper name that can be used
          *         by this EL; null if none found.
          */
-        private String matchMap(List<ELNode.Function> functions) {
+        private String matchMap(ArrayList<ELNode.Function> functions) {
 
             String mapName = null;
-            for (ELNode.Function f : functions) {
+            for (int i = 0; i < functions.size(); i++) {
+                ELNode.Function f = functions.get(i);
                 String temName = gMap.get(f.getPrefix() + ':' + f.getName() +
                         ':' + f.getUri());
                 if (temName == null) {
@@ -326,6 +319,15 @@ public class ELFunctionMapper {
                 throw new JasperException(e);
             }
             return clazz.getCanonicalName();
+        }
+    }
+
+    private static class PrivilegedGetTccl
+            implements PrivilegedAction<ClassLoader> {
+
+        @Override
+        public ClassLoader run() {
+            return Thread.currentThread().getContextClassLoader();
         }
     }
 }

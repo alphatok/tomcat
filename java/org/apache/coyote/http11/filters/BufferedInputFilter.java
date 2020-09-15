@@ -18,21 +18,18 @@
 package org.apache.coyote.http11.filters;
 
 import java.io.IOException;
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.coyote.InputBuffer;
 import org.apache.coyote.Request;
 import org.apache.coyote.http11.InputFilter;
 import org.apache.tomcat.util.buf.ByteChunk;
-import org.apache.tomcat.util.net.ApplicationBufferHandler;
 
 /**
  * Input filter responsible for reading and buffering the request body, so that
  * it does not interfere with client SSL handshake messages.
  */
-public class BufferedInputFilter implements InputFilter, ApplicationBufferHandler {
+public class BufferedInputFilter implements InputFilter {
 
     // -------------------------------------------------------------- Constants
 
@@ -42,8 +39,8 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
 
     // ----------------------------------------------------- Instance Variables
 
-    private ByteBuffer buffered;
-    private ByteBuffer tempRead;
+    private ByteChunk buffered = null;
+    private final ByteChunk tempRead = new ByteChunk(1024);
     private InputBuffer buffer;
     private boolean hasRead = false;
 
@@ -62,13 +59,11 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
     /**
      * Set the buffering limit. This should be reset every time the buffer is
      * used.
-     *
-     * @param limit The maximum number of bytes that will be buffered
      */
     public void setLimit(int limit) {
         if (buffered == null) {
-            buffered = ByteBuffer.allocate(limit);
-            buffered.flip();
+            buffered = new ByteChunk(4048);
+            buffered.setLimit(limit);
         }
     }
 
@@ -83,13 +78,11 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
     public void setRequest(Request request) {
         // save off the Request body
         try {
-            while (buffer.doRead(this) >= 0) {
-                buffered.mark().position(buffered.limit()).limit(buffered.capacity());
-                buffered.put(tempRead);
-                buffered.limit(buffered.position()).reset();
-                tempRead = null;
+            while (buffer.doRead(tempRead, request) >= 0) {
+                buffered.append(tempRead);
+                tempRead.recycle();
             }
-        } catch(IOException | BufferOverflowException ioe) {
+        } catch(IOException ioe) {
             // No need for i18n - this isn't going to get logged anywhere
             throw new IllegalStateException(
                     "Request body too large for buffer");
@@ -97,17 +90,18 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
     }
 
     /**
-     * Fills the given ByteBuffer with the buffered request body.
+     * Fills the given ByteChunk with the buffered request body.
      */
     @Override
-    public int doRead(ApplicationBufferHandler handler) throws IOException {
-        if (isFinished()) {
+    public int doRead(ByteChunk chunk, Request request) throws IOException {
+        if (hasRead || buffered.getLength() <= 0) {
             return -1;
         }
 
-        handler.setByteBuffer(buffered);
+        chunk.setBytes(buffered.getBytes(), buffered.getStart(),
+                buffered.getLength());
         hasRead = true;
-        return buffered.remaining();
+        return chunk.getLength();
     }
 
     @Override
@@ -118,12 +112,13 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
     @Override
     public void recycle() {
         if (buffered != null) {
-            if (buffered.capacity() > 65536) {
+            if (buffered.getBuffer().length > 65536) {
                 buffered = null;
             } else {
-                buffered.position(0).limit(0);
+                buffered.recycle();
             }
         }
+        tempRead.recycle();
         hasRead = false;
         buffer = null;
     }
@@ -140,30 +135,12 @@ public class BufferedInputFilter implements InputFilter, ApplicationBufferHandle
 
     @Override
     public int available() {
-        return buffered.remaining();
+        return buffered.getLength();
     }
 
 
     @Override
     public boolean isFinished() {
-        return hasRead || buffered.remaining() <= 0;
-    }
-
-
-    @Override
-    public void setByteBuffer(ByteBuffer buffer) {
-        tempRead = buffer;
-    }
-
-
-    @Override
-    public ByteBuffer getByteBuffer() {
-        return tempRead;
-    }
-
-
-    @Override
-    public void expand(int size) {
-        // no-op
+        return hasRead || buffered.getLength() <= 0;
     }
 }

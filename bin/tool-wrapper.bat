@@ -14,6 +14,7 @@ rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 rem See the License for the specific language governing permissions and
 rem limitations under the License.
 
+if "%OS%" == "Windows_NT" setlocal
 rem ---------------------------------------------------------------------------
 rem Wrapper script for command line tools
 rem
@@ -31,9 +32,13 @@ rem                   Defaults to JAVA_HOME if empty. If JRE_HOME and JAVA_HOME
 rem                   are both set, JRE_HOME is used.
 rem
 rem   JAVA_OPTS       (Optional) Java runtime options.
+rem
+rem   JAVA_ENDORSED_DIRS (Optional) Lists of of semi-colon separated directories
+rem                   containing some jars in order to allow replacement of APIs
+rem                   created outside of the JCP (i.e. DOM and SAX from W3C).
+rem                   It can also be used to update the XML parser implementation.
+rem                   Defaults to $CATALINA_HOME/endorsed.
 rem ---------------------------------------------------------------------------
-
-setlocal
 
 rem Guess CATALINA_HOME if not defined
 set "CURRENT_DIR=%cd%"
@@ -85,6 +90,6 @@ shift
 goto setArgs
 :doneSetArgs
 
-%_RUNJAVA% %JAVA_OPTS% %TOOL_OPTS% -classpath "%CLASSPATH%" -Dcatalina.home="%CATALINA_HOME%" org.apache.catalina.startup.Tool %CMD_LINE_ARGS%
+%_RUNJAVA% %JAVA_OPTS% %TOOL_OPTS% -Djava.endorsed.dirs="%JAVA_ENDORSED_DIRS%" -classpath "%CLASSPATH%" -Dcatalina.home="%CATALINA_HOME%" org.apache.catalina.startup.Tool %CMD_LINE_ARGS%
 
 :end

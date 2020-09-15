@@ -44,7 +44,7 @@ public class NioSelectorPool {
     private static final Log log = LogFactory.getLog(NioSelectorPool.class);
 
     protected static final boolean SHARED =
-        Boolean.parseBoolean(System.getProperty("org.apache.tomcat.util.net.NioSelectorShared", "true"));
+        Boolean.valueOf(System.getProperty("org.apache.tomcat.util.net.NioSelectorShared", "true")).booleanValue();
 
     protected NioBlockingSelector blockingSelector;
 
@@ -63,7 +63,12 @@ public class NioSelectorPool {
         if (SHARED && SHARED_SELECTOR == null) {
             synchronized ( NioSelectorPool.class ) {
                 if ( SHARED_SELECTOR == null )  {
-                    SHARED_SELECTOR = Selector.open();
+                    synchronized (Selector.class) {
+                        // Selector.open() isn't thread safe
+                        // http://bugs.sun.com/view_bug.do?bug_id=6427854
+                        // Affects 1.6.0_29, fixed in 1.7.0_01
+                        SHARED_SELECTOR = Selector.open();
+                    }
                     log.info("Using a shared selector for servlet write/read");
                 }
             }
@@ -71,6 +76,7 @@ public class NioSelectorPool {
         return  SHARED_SELECTOR;
     }
 
+    @SuppressWarnings("resource") // s is closed in put()
     public Selector get() throws IOException{
         if ( SHARED ) {
             return getSharedSelector();
@@ -83,13 +89,23 @@ public class NioSelectorPool {
         try {
             s = selectors.size()>0?selectors.poll():null;
             if (s == null) {
-                s = Selector.open();
+                synchronized (Selector.class) {
+                    // Selector.open() isn't thread safe
+                    // http://bugs.sun.com/view_bug.do?bug_id=6427854
+                    // Affects 1.6.0_29, fixed in 1.7.0_01
+                    s = Selector.open();
+                }
             }
             else spare.decrementAndGet();
 
         }catch (NoSuchElementException x ) {
             try {
-                s = Selector.open();
+                synchronized (Selector.class) {
+                    // Selector.open() isn't thread safe
+                    // http://bugs.sun.com/view_bug.do?bug_id=6427854
+                    // Affects 1.6.0_29, fixed in 1.7.0_01
+                    s = Selector.open();
+                }
             } catch (IOException iox) {
             }
         } finally {
@@ -244,12 +260,7 @@ public class NioSelectorPool {
                 int cnt = 0;
                 if ( keycount > 0 ) { //only read if we were registered for a read
                     cnt = socket.read(buf);
-                    if (cnt == -1) {
-                        if (read == 0) {
-                            read = -1;
-                        }
-                        break;
-                    }
+                    if (cnt == -1) throw new EOFException();
                     read += cnt;
                     if (cnt > 0) continue; //read some more
                     if (cnt==0 && (read>0 || (!block) ) ) break; //we are done reading

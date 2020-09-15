@@ -31,7 +31,6 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.mbeans.MBeanUtils;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.util.res.StringManager;
 
 /**
  * Store Server/Service/Host/Context at file or PrintWriter. Default server.xml
@@ -39,8 +38,6 @@ import org.apache.tomcat.util.res.StringManager;
  */
 public class StoreConfig implements IStoreConfig {
     private static Log log = LogFactory.getLog(StoreConfig.class);
-    protected static final StringManager sm = StringManager
-            .getManager(Constants.Package);
 
     private String serverFilename = "conf/server.xml";
 
@@ -49,7 +46,7 @@ public class StoreConfig implements IStoreConfig {
     private Server server;
 
     /**
-     * Get server.xml location
+     * get server.xml location
      *
      * @return The server file name
      */
@@ -58,25 +55,30 @@ public class StoreConfig implements IStoreConfig {
     }
 
     /**
-     * Set new server.xml location.
+     * set new server.xml location
      *
-     * @param string The server.xml location
+     * @param string
      */
     public void setServerFilename(String string) {
         serverFilename = string;
     }
 
-    /**
+    /*
      * Get the StoreRegistry with all factory to generate the
-     * server.xml/context.xml files.
+     * server.xml/context.xml files
      *
-     * @see org.apache.catalina.storeconfig.IStoreConfig#getRegistry()
+     * @see org.apache.catalina.config.IStoreConfig#getRegistry()
      */
     @Override
     public StoreRegistry getRegistry() {
         return registry;
     }
 
+    /*
+     * set StoreRegistry
+     *
+     * @see org.apache.catalina.config.IStoreConfig#setRegistry(org.apache.catalina.config.ConfigurationRegistry)
+     */
     @Override
     public void setServer(Server aServer) {
         server = aServer;
@@ -87,11 +89,6 @@ public class StoreConfig implements IStoreConfig {
         return server;
     }
 
-    /**
-     * set StoreRegistry
-     *
-     * @see org.apache.catalina.storeconfig.IStoreConfig#setRegistry(org.apache.catalina.storeconfig.StoreRegistry)
-     */
     @Override
     public void setRegistry(StoreRegistry aRegistry) {
         registry = aRegistry;
@@ -101,20 +98,19 @@ public class StoreConfig implements IStoreConfig {
      * Store current Server.
      */
     @Override
-    public void storeConfig() {
+    public synchronized void storeConfig() {
         store(server);
     }
 
     /**
-     * Store Server from Object Name (Catalina:type=Server).
+     * Store Server from Object Name (Catalina:type=Server)
      *
-     * @param aServerName Server ObjectName
-     * @param backup <code>true</code> to backup existing configuration files
-     *  before rewriting them
-     * @param externalAllowed <code>true</code> to allow saving webapp
-     *  configuration for webapps that are not inside the host's app
-     *  directory
-     * @throws MalformedObjectNameException Bad MBean name
+     * @param aServerName
+     *            Server ObjectName
+     * @param backup
+     * @param externalAllowed
+     *            s *
+     * @throws MalformedObjectNameException
      */
     public synchronized void storeServer(String aServerName, boolean backup,
             boolean externalAllowed) throws MalformedObjectNameException {
@@ -158,15 +154,13 @@ public class StoreConfig implements IStoreConfig {
     }
 
     /**
-     * Store a Context from ObjectName.
+     * Store a Context from ObjectName
      *
-     * @param aContextName MBean ObjectName
-     * @param backup <code>true</code> to backup existing configuration files
-     *  before rewriting them
-     * @param externalAllowed <code>true</code> to allow saving webapp
-     *  configuration for webapps that are not inside the host's app
-     *  directory
-     * @throws MalformedObjectNameException Bad MBean name
+     * @param aContextName
+     *            MBean ObjectName
+     * @param backup
+     * @param externalAllowed
+     * @throws MalformedObjectNameException
      */
     public synchronized void storeContext(String aContextName, boolean backup,
             boolean externalAllowed) throws MalformedObjectNameException {
@@ -227,32 +221,47 @@ public class StoreConfig implements IStoreConfig {
      * Write the configuration information for this entire <code>Server</code>
      * out to the server.xml configuration file.
      *
-     * @param aServer Server instance
-     * @return <code>true</code> if the store operation was successful
      */
     @Override
-    public synchronized boolean store(Server aServer) {
+    public synchronized void store(Server aServer) {
+
         StoreFileMover mover = new StoreFileMover(System
                 .getProperty("catalina.base"), getServerFilename(),
                 getRegistry().getEncoding());
         // Open an output writer for the new configuration file
         try {
-            try (PrintWriter writer = mover.getWriter()) {
+            PrintWriter writer = null;
+            try {
+                writer = mover.getWriter();
                 store(writer, -2, aServer);
+            } finally {
+                if (writer != null) {
+                    // Flush and close the output file
+                    try {
+                        writer.flush();
+                    } catch (Exception e) {
+                        log.error(e);
+                    }
+                    try {
+                        writer.close();
+                    } catch (Exception e) {
+                        throw (e);
+                    }
+                }
             }
             mover.move();
-            return true;
         } catch (Exception e) {
-            log.error(sm.getString("config.storeServerError"), e);
+            log.error(e);
         }
-        return false;
     }
 
-    /**
-     * @see org.apache.catalina.storeconfig.IStoreConfig#store(org.apache.catalina.Context)
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.catalina.config.IStoreConfig#store(org.apache.catalina.Context)
      */
     @Override
-    public synchronized boolean store(Context aContext) {
+    public synchronized void store(Context aContext) {
         URL configFile = aContext.getConfigFile();
         if (configFile != null) {
             try {
@@ -267,23 +276,23 @@ public class StoreConfig implements IStoreConfig {
                         desc.setStoreSeparate(old);
                     }
                 }
-                return true;
             } catch (Exception e) {
-                log.error(sm.getString("config.storeContextError", aContext.getName()), e);
+                log.error(e);
             }
-        } else {
+        } else
             log.error("Missing configFile at Context " + aContext.getPath());
-        }
-        return false;
+
     }
 
-    /**
-     * @see org.apache.catalina.storeconfig.IStoreConfig#store(java.io.PrintWriter,
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.catalina.config.IStoreConfig#store(java.io.PrintWriter,
      *      int, org.apache.catalina.Context)
      */
     @Override
-    public void store(PrintWriter aWriter, int indent,
-            Context aContext) throws Exception {
+    public synchronized void store(PrintWriter aWriter, int indent,
+            Context aContext) {
         boolean oldSeparate = true;
         StoreDescription desc = null;
         try {
@@ -291,46 +300,67 @@ public class StoreConfig implements IStoreConfig {
             oldSeparate = desc.isStoreSeparate();
             desc.setStoreSeparate(false);
             desc.getStoreFactory().store(aWriter, indent, aContext);
+        } catch (Exception e) {
+            log.error(e);
         } finally {
             if (desc != null)
                 desc.setStoreSeparate(oldSeparate);
         }
     }
 
-    /**
-     * @see org.apache.catalina.storeconfig.IStoreConfig#store(java.io.PrintWriter,
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.catalina.config.IStoreConfig#store(java.io.PrintWriter,
      *      int, org.apache.catalina.Host)
      */
     @Override
-    public void store(PrintWriter aWriter, int indent, Host aHost)
-            throws Exception {
-        StoreDescription desc = getRegistry().findDescription(
-                aHost.getClass());
-        desc.getStoreFactory().store(aWriter, indent, aHost);
+    public synchronized void store(PrintWriter aWriter, int indent, Host aHost) {
+        try {
+            StoreDescription desc = getRegistry().findDescription(
+                    aHost.getClass());
+            desc.getStoreFactory().store(aWriter, indent, aHost);
+        } catch (Exception e) {
+            log.error(e);
+        }
     }
 
-    /**
-     * @see org.apache.catalina.storeconfig.IStoreConfig#store(java.io.PrintWriter,
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.catalina.config.IStoreConfig#store(java.io.PrintWriter,
      *      int, org.apache.catalina.Service)
      */
     @Override
-    public void store(PrintWriter aWriter, int indent,
-            Service aService) throws Exception {
-        StoreDescription desc = getRegistry().findDescription(
-                aService.getClass());
-        desc.getStoreFactory().store(aWriter, indent, aService);
+    public synchronized void store(PrintWriter aWriter, int indent,
+            Service aService) {
+        try {
+            StoreDescription desc = getRegistry().findDescription(
+                    aService.getClass());
+            desc.getStoreFactory().store(aWriter, indent, aService);
+        } catch (Exception e) {
+            log.error(e);
+        }
     }
 
     /**
-     * @see org.apache.catalina.storeconfig.IStoreConfig#store(java.io.PrintWriter,
-     *      int, org.apache.catalina.Server)
+     * Store the state of this Server MBean (which will recursively store
+     * everything)
+     *
+     * @param writer
+     * @param indent
+     * @param aServer
      */
     @Override
-    public void store(PrintWriter writer, int indent,
-            Server aServer) throws Exception {
-        StoreDescription desc = getRegistry().findDescription(
-                aServer.getClass());
-        desc.getStoreFactory().store(writer, indent, aServer);
+    public synchronized void store(PrintWriter writer, int indent,
+            Server aServer) {
+        try {
+            StoreDescription desc = getRegistry().findDescription(
+                    aServer.getClass());
+            desc.getStoreFactory().store(writer, indent, aServer);
+        } catch (Exception e) {
+            log.error(e);
+        }
     }
 
 }

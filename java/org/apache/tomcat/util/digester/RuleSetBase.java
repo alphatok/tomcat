@@ -47,7 +47,9 @@ public abstract class RuleSetBase implements RuleSet {
      */
     @Override
     public String getNamespaceURI() {
-        return this.namespaceURI;
+
+        return (this.namespaceURI);
+
     }
 
 

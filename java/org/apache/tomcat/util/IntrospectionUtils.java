@@ -23,25 +23,19 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
 
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
-
 /**
  * Utils for introspection and reflection
  */
 public final class IntrospectionUtils {
 
 
-    private static final Log log = LogFactory.getLog(IntrospectionUtils.class);
+    private static final org.apache.juli.logging.Log log=
+        org.apache.juli.logging.LogFactory.getLog( IntrospectionUtils.class );
 
     /**
      * Find a method with the right name If found, call the method ( if param is
      * int or boolean we'll convert value to the right type before) - that means
      * you can have setDebug(1).
-     * @param o The object to set a property on
-     * @param name The property name
-     * @param value The property value
-     * @return <code>true</code> if operation was successful
      */
     public static boolean setProperty(Object o, String name, String value) {
         return setProperty(o,name,value,true);
@@ -86,7 +80,7 @@ public final class IntrospectionUtils {
                     if ("java.lang.Integer".equals(paramType.getName())
                             || "int".equals(paramType.getName())) {
                         try {
-                            params[0] = Integer.valueOf(value);
+                            params[0] = new Integer(value);
                         } catch (NumberFormatException ex) {
                             ok = false;
                         }
@@ -94,7 +88,7 @@ public final class IntrospectionUtils {
                     }else if ("java.lang.Long".equals(paramType.getName())
                                 || "long".equals(paramType.getName())) {
                             try {
-                                params[0] = Long.valueOf(value);
+                                params[0] = new Long(value);
                             } catch (NumberFormatException ex) {
                                 ok = false;
                             }
@@ -168,15 +162,18 @@ public final class IntrospectionUtils {
         } catch (IllegalArgumentException ex2) {
             log.warn("IAE " + o + " " + name + " " + value, ex2);
         } catch (SecurityException ex1) {
-            log.warn("IntrospectionUtils: SecurityException for " +
-                    o.getClass() + " " + name + "=" + value + ")", ex1);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: SecurityException for " +
+                        o.getClass() + " " + name + "=" + value + ")", ex1);
         } catch (IllegalAccessException iae) {
-            log.warn("IntrospectionUtils: IllegalAccessException for " +
-                    o.getClass() + " " + name + "=" + value + ")", iae);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: IllegalAccessException for " +
+                        o.getClass() + " " + name + "=" + value + ")", iae);
         } catch (InvocationTargetException ie) {
             ExceptionUtils.handleThrowable(ie.getCause());
-            log.warn("IntrospectionUtils: InvocationTargetException for " +
-                    o.getClass() + " " + name + "=" + value + ")", ie);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: InvocationTargetException for " +
+                        o.getClass() + " " + name + "=" + value + ")", ie);
         }
         return false;
     }
@@ -214,40 +211,35 @@ public final class IntrospectionUtils {
         } catch (IllegalArgumentException ex2) {
             log.warn("IAE " + o + " " + name, ex2);
         } catch (SecurityException ex1) {
-            log.warn("IntrospectionUtils: SecurityException for " +
-                    o.getClass() + " " + name + ")", ex1);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: SecurityException for " +
+                        o.getClass() + " " + name + ")", ex1);
         } catch (IllegalAccessException iae) {
-            log.warn("IntrospectionUtils: IllegalAccessException for " +
-                    o.getClass() + " " + name + ")", iae);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: IllegalAccessException for " +
+                        o.getClass() + " " + name + ")", iae);
         } catch (InvocationTargetException ie) {
-            if (ie.getCause() instanceof NullPointerException) {
-                // Assume the underlying object uses a storage to represent an unset property
-                return null;
-            }
             ExceptionUtils.handleThrowable(ie.getCause());
-            log.warn("IntrospectionUtils: InvocationTargetException for " +
-                    o.getClass() + " " + name + ")", ie);
+            if (log.isDebugEnabled())
+                log.debug("IntrospectionUtils: InvocationTargetException for " +
+                        o.getClass() + " " + name + ")");
         }
         return null;
     }
 
     /**
-     * Replace ${NAME} with the property value.
-     * @param value The value
-     * @param staticProp Replacement properties
-     * @param dynamicProp Replacement properties
-     * @return the replacement value
+     * Replace ${NAME} with the property value
      */
     public static String replaceProperties(String value,
             Hashtable<Object,Object> staticProp, PropertySource dynamicProp[]) {
-        if (value.indexOf('$') < 0) {
+        if (value.indexOf("$") < 0) {
             return value;
         }
         StringBuilder sb = new StringBuilder();
         int prev = 0;
         // assert value!=nil
         int pos;
-        while ((pos = value.indexOf('$', prev)) >= 0) {
+        while ((pos = value.indexOf("$", prev)) >= 0) {
             if (pos > 0) {
                 sb.append(value.substring(prev, pos));
             }
@@ -290,9 +282,7 @@ public final class IntrospectionUtils {
     }
 
     /**
-     * Reverse of Introspector.decapitalize.
-     * @param name The name
-     * @return the capitalized string
+     * Reverse of Introspector.decapitalize
      */
     public static String capitalize(String name) {
         if (name == null || name.length() == 0) {
@@ -421,7 +411,7 @@ public final class IntrospectionUtils {
         } else if ("java.lang.Integer".equals(paramType.getName())
                 || "int".equals(paramType.getName())) {
             try {
-                result = Integer.valueOf(object);
+                result = new Integer(object);
             } catch (NumberFormatException ex) {
             }
             // Try a setFoo ( boolean )

@@ -31,12 +31,13 @@ public abstract class AbstractTestFileResourceSet extends AbstractTestResourceSe
         this.readOnly = readOnly;
     }
 
-    protected abstract File getDir2();
-
     @Override
     public WebResourceRoot getWebResourceRoot() {
+        File f = new File(getBaseDir());
         TesterWebResourceRoot root = new TesterWebResourceRoot();
-        WebResourceSet webResourceSet = new DirResourceSet(root, "/", getBaseDir().getAbsolutePath(), "/");
+        WebResourceSet webResourceSet =
+                new DirResourceSet(new TesterWebResourceRoot(), "/",
+                        f.getAbsolutePath(), "/");
         webResourceSet.setReadOnly(readOnly);
         root.setMainResources(webResourceSet);
 
@@ -69,8 +70,8 @@ public abstract class AbstractTestFileResourceSet extends AbstractTestResourceSe
     }
 
     @Override
-    public File getBaseDir() {
-        return getDir2();
+    public String getBaseDir() {
+        return "test/webresources/dir2";
     }
 
     @Override

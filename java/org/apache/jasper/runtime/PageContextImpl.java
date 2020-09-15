@@ -19,16 +19,17 @@ package org.apache.jasper.runtime;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Arrays;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Set;
 
 import javax.el.ELContext;
 import javax.el.ELException;
 import javax.el.ExpressionFactory;
-import javax.el.ImportHandler;
 import javax.el.ValueExpression;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.Servlet;
@@ -49,7 +50,7 @@ import javax.servlet.jsp.tagext.BodyContent;
 import org.apache.jasper.Constants;
 import org.apache.jasper.compiler.Localizer;
 import org.apache.jasper.el.ELContextImpl;
-import org.apache.jasper.runtime.JspContextWrapper.ELContextWrapper;
+import org.apache.jasper.security.SecurityUtil;
 
 /**
  * Implementation of the PageContext class from the JSP spec. Also doubles as a
@@ -203,16 +204,53 @@ public class PageContextImpl extends PageContext {
 
     @Override
     public Object getAttribute(final String name) {
-        return getAttribute(name, PAGE_SCOPE);
+
+        if (name == null) {
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
+        }
+
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            return AccessController.doPrivileged(
+                    new PrivilegedAction<Object>() {
+                @Override
+                public Object run() {
+                    return doGetAttribute(name);
+                }
+            });
+        } else {
+            return doGetAttribute(name);
+        }
+
+    }
+
+    private Object doGetAttribute(String name) {
+        return attributes.get(name);
     }
 
     @Override
     public Object getAttribute(final String name, final int scope) {
 
         if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
         }
 
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            return AccessController.doPrivileged(
+                    new PrivilegedAction<Object>() {
+                @Override
+                public Object run() {
+                    return doGetAttribute(name, scope);
+                }
+            });
+        } else {
+            return doGetAttribute(name, scope);
+        }
+
+    }
+
+    private Object doGetAttribute(String name, int scope) {
         switch (scope) {
         case PAGE_SCOPE:
             return attributes.get(name);
@@ -222,7 +260,8 @@ public class PageContextImpl extends PageContext {
 
         case SESSION_SCOPE:
             if (session == null) {
-                throw new IllegalStateException(Localizer.getMessage("jsp.error.page.noSession"));
+                throw new IllegalStateException(Localizer
+                        .getMessage("jsp.error.page.noSession"));
             }
             return session.getAttribute(name);
 
@@ -236,19 +275,57 @@ public class PageContextImpl extends PageContext {
 
     @Override
     public void setAttribute(final String name, final Object attribute) {
-        setAttribute(name, attribute, PAGE_SCOPE);
+
+        if (name == null) {
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
+        }
+
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                @Override
+                public Void run() {
+                    doSetAttribute(name, attribute);
+                    return null;
+                }
+            });
+        } else {
+            doSetAttribute(name, attribute);
+        }
+    }
+
+    private void doSetAttribute(String name, Object attribute) {
+        if (attribute != null) {
+            attributes.put(name, attribute);
+        } else {
+            removeAttribute(name, PAGE_SCOPE);
+        }
     }
 
     @Override
     public void setAttribute(final String name, final Object o, final int scope) {
 
         if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
         }
 
-        if (o == null) {
-            removeAttribute(name, scope);
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                @Override
+                public Void run() {
+                    doSetAttribute(name, o, scope);
+                    return null;
+                }
+            });
         } else {
+            doSetAttribute(name, o, scope);
+        }
+
+    }
+
+    private void doSetAttribute(String name, Object o, int scope) {
+        if (o != null) {
             switch (scope) {
             case PAGE_SCOPE:
                 attributes.put(name, o);
@@ -273,6 +350,8 @@ public class PageContextImpl extends PageContext {
             default:
                 throw new IllegalArgumentException("Invalid scope");
             }
+        } else {
+            removeAttribute(name, scope);
         }
     }
 
@@ -280,9 +359,23 @@ public class PageContextImpl extends PageContext {
     public void removeAttribute(final String name, final int scope) {
 
         if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
         }
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                @Override
+                public Void run() {
+                    doRemoveAttribute(name, scope);
+                    return null;
+                }
+            });
+        } else {
+            doRemoveAttribute(name, scope);
+        }
+    }
 
+    private void doRemoveAttribute(String name, int scope) {
         switch (scope) {
         case PAGE_SCOPE:
             attributes.remove(name);
@@ -294,7 +387,8 @@ public class PageContextImpl extends PageContext {
 
         case SESSION_SCOPE:
             if (session == null) {
-                throw new IllegalStateException(Localizer.getMessage("jsp.error.page.noSession"));
+                throw new IllegalStateException(Localizer
+                        .getMessage("jsp.error.page.noSession"));
             }
             session.removeAttribute(name);
             break;
@@ -312,16 +406,29 @@ public class PageContextImpl extends PageContext {
     public int getAttributesScope(final String name) {
 
         if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
         }
 
-        if (attributes.get(name) != null) {
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            return (AccessController
+                    .doPrivileged(new PrivilegedAction<Integer>() {
+                        @Override
+                        public Integer run() {
+                            return Integer.valueOf(doGetAttributeScope(name));
+                        }
+                    })).intValue();
+        } else {
+            return doGetAttributeScope(name);
+        }
+    }
+
+    private int doGetAttributeScope(String name) {
+        if (attributes.get(name) != null)
             return PAGE_SCOPE;
-        }
 
-        if (request.getAttribute(name) != null) {
+        if (request.getAttribute(name) != null)
             return REQUEST_SCOPE;
-        }
 
         if (session != null) {
             try {
@@ -333,28 +440,46 @@ public class PageContextImpl extends PageContext {
             }
         }
 
-        if (context.getAttribute(name) != null) {
+        if (context.getAttribute(name) != null)
             return APPLICATION_SCOPE;
-        }
 
         return 0;
     }
 
     @Override
     public Object findAttribute(final String name) {
-        if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            return AccessController.doPrivileged(
+                    new PrivilegedAction<Object>() {
+                @Override
+                public Object run() {
+                    if (name == null) {
+                        throw new NullPointerException(Localizer
+                                .getMessage("jsp.error.attribute.null_name"));
+                    }
+
+                    return doFindAttribute(name);
+                }
+            });
+        } else {
+            if (name == null) {
+                throw new NullPointerException(Localizer
+                        .getMessage("jsp.error.attribute.null_name"));
+            }
+
+            return doFindAttribute(name);
         }
+    }
+
+    private Object doFindAttribute(String name) {
 
         Object o = attributes.get(name);
-        if (o != null) {
+        if (o != null)
             return o;
-        }
 
         o = request.getAttribute(name);
-        if (o != null) {
+        if (o != null)
             return o;
-        }
 
         if (session != null) {
             try {
@@ -363,9 +488,8 @@ public class PageContextImpl extends PageContext {
                 // Session has been invalidated.
                 // Ignore and fall through to application scope.
             }
-            if (o != null) {
+            if (o != null)
                 return o;
-            }
         }
 
         return context.getAttribute(name);
@@ -373,6 +497,20 @@ public class PageContextImpl extends PageContext {
 
     @Override
     public Enumeration<String> getAttributeNamesInScope(final int scope) {
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            return AccessController.doPrivileged(
+                    new PrivilegedAction<Enumeration<String>>() {
+                        @Override
+                        public Enumeration<String> run() {
+                            return doGetAttributeNamesInScope(scope);
+                        }
+                    });
+        } else {
+            return doGetAttributeNamesInScope(scope);
+        }
+    }
+
+    private Enumeration<String> doGetAttributeNamesInScope(int scope) {
         switch (scope) {
         case PAGE_SCOPE:
             return Collections.enumeration(attributes.keySet());
@@ -382,7 +520,8 @@ public class PageContextImpl extends PageContext {
 
         case SESSION_SCOPE:
             if (session == null) {
-                throw new IllegalStateException(Localizer.getMessage("jsp.error.page.noSession"));
+                throw new IllegalStateException(Localizer
+                        .getMessage("jsp.error.page.noSession"));
             }
             return session.getAttributeNames();
 
@@ -398,9 +537,24 @@ public class PageContextImpl extends PageContext {
     public void removeAttribute(final String name) {
 
         if (name == null) {
-            throw new NullPointerException(Localizer.getMessage("jsp.error.attribute.null_name"));
+            throw new NullPointerException(Localizer
+                    .getMessage("jsp.error.attribute.null_name"));
         }
 
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                @Override
+                public Void run() {
+                    doRemoveAttribute(name);
+                    return null;
+                }
+            });
+        } else {
+            doRemoveAttribute(name);
+        }
+    }
+
+    private void doRemoveAttribute(String name) {
         removeAttribute(name, PAGE_SCOPE);
         removeAttribute(name, REQUEST_SCOPE);
         if( session != null ) {
@@ -445,8 +599,7 @@ public class PageContextImpl extends PageContext {
     }
 
     /**
-     * Returns the exception associated with this page context, if any.
-     * <p>
+     * Returns the exception associated with this page context, if any. <p/>
      * Added wrapping for Throwables to avoid ClassCastException: see Bugzilla
      * 31171 for details.
      *
@@ -494,7 +647,33 @@ public class PageContextImpl extends PageContext {
     @Override
     public void include(final String relativeUrlPath, final boolean flush)
             throws ServletException, IOException {
-        JspRuntimeLibrary.include(request, response, relativeUrlPath, out, flush);
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            try {
+                AccessController.doPrivileged(
+                        new PrivilegedExceptionAction<Void>() {
+                    @Override
+                    public Void run() throws Exception {
+                        doInclude(relativeUrlPath, flush);
+                        return null;
+                    }
+                });
+            } catch (PrivilegedActionException e) {
+                Exception ex = e.getException();
+                if (ex instanceof IOException) {
+                    throw (IOException) ex;
+                } else {
+                    throw (ServletException) ex;
+                }
+            }
+        } else {
+            doInclude(relativeUrlPath, flush);
+        }
+    }
+
+    private void doInclude(String relativeUrlPath, boolean flush)
+            throws ServletException, IOException {
+        JspRuntimeLibrary.include(request, response, relativeUrlPath, out,
+                flush);
     }
 
     @Override
@@ -505,14 +684,41 @@ public class PageContextImpl extends PageContext {
     }
 
     @Override
-    public void forward(final String relativeUrlPath) throws ServletException, IOException {
+    public void forward(final String relativeUrlPath) throws ServletException,
+            IOException {
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            try {
+                AccessController.doPrivileged(
+                        new PrivilegedExceptionAction<Void>() {
+                    @Override
+                    public Void run() throws Exception {
+                        doForward(relativeUrlPath);
+                        return null;
+                    }
+                });
+            } catch (PrivilegedActionException e) {
+                Exception ex = e.getException();
+                if (ex instanceof IOException) {
+                    throw (IOException) ex;
+                } else {
+                    throw (ServletException) ex;
+                }
+            }
+        } else {
+            doForward(relativeUrlPath);
+        }
+    }
+
+    private void doForward(String relativeUrlPath) throws ServletException,
+            IOException {
+
         // JSP.4.5 If the buffer was flushed, throw IllegalStateException
         try {
             out.clear();
             baseOut.clear();
         } catch (IOException ex) {
-            IllegalStateException ise = new IllegalStateException(Localizer.getMessage(
-                    "jsp.error.attempt_to_clear_flushed_buffer"));
+            IllegalStateException ise = new IllegalStateException(Localizer
+                    .getMessage("jsp.error.attempt_to_clear_flushed_buffer"));
             ise.initCause(ex);
             throw ise;
         }
@@ -523,16 +729,17 @@ public class PageContextImpl extends PageContext {
         }
 
         final String path = getAbsolutePathRelativeToContext(relativeUrlPath);
-        String includeUri = (String) request.getAttribute(RequestDispatcher.INCLUDE_SERVLET_PATH);
+        String includeUri = (String) request.getAttribute(
+                RequestDispatcher.INCLUDE_SERVLET_PATH);
 
         if (includeUri != null)
             request.removeAttribute(RequestDispatcher.INCLUDE_SERVLET_PATH);
         try {
             context.getRequestDispatcher(path).forward(request, response);
         } finally {
-            if (includeUri != null) {
-                request.setAttribute(RequestDispatcher.INCLUDE_SERVLET_PATH, includeUri);
-            }
+            if (includeUri != null)
+                request.setAttribute(RequestDispatcher.INCLUDE_SERVLET_PATH,
+                        includeUri);
         }
     }
 
@@ -545,7 +752,10 @@ public class PageContextImpl extends PageContext {
     public JspWriter pushBody(Writer writer) {
         depth++;
         if (depth >= outs.length) {
-            BodyContentImpl[] newOuts = Arrays.copyOf(outs, depth + 1);
+            BodyContentImpl[] newOuts = new BodyContentImpl[depth + 1];
+            for (int i = 0; i < outs.length; i++) {
+                newOuts[i] = outs[i];
+            }
             newOuts[depth] = new BodyContentImpl(out);
             outs = newOuts;
         }
@@ -597,11 +807,38 @@ public class PageContextImpl extends PageContext {
     }
 
     @Override
-    @SuppressWarnings("deprecation") // Still jave to support old JSP EL
-    public void handlePageException(final Throwable t) throws IOException, ServletException {
-        if (t == null) {
+    public void handlePageException(final Throwable t) throws IOException,
+            ServletException {
+        if (t == null)
             throw new NullPointerException("null Throwable");
+
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            try {
+                AccessController.doPrivileged(
+                        new PrivilegedExceptionAction<Void>() {
+                    @Override
+                    public Void run() throws Exception {
+                        doHandlePageException(t);
+                        return null;
+                    }
+                });
+            } catch (PrivilegedActionException e) {
+                Exception ex = e.getException();
+                if (ex instanceof IOException) {
+                    throw (IOException) ex;
+                } else {
+                    throw (ServletException) ex;
+                }
+            }
+        } else {
+            doHandlePageException(t);
         }
+
+    }
+
+    @SuppressWarnings("deprecation") // Still jave to support old JSP EL
+    private void doHandlePageException(Throwable t) throws IOException,
+            ServletException {
 
         if (errorPageURL != null && !errorPageURL.equals("")) {
 
@@ -616,7 +853,7 @@ public class PageContextImpl extends PageContext {
              */
             request.setAttribute(PageContext.EXCEPTION, t);
             request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE,
-                    Integer.valueOf(HttpServletResponse.SC_INTERNAL_SERVER_ERROR));
+                    new Integer(HttpServletResponse.SC_INTERNAL_SERVER_ERROR));
             request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI,
                     ((HttpServletRequest) request).getRequestURI());
             request.setAttribute(RequestDispatcher.ERROR_SERVLET_NAME,
@@ -629,7 +866,8 @@ public class PageContextImpl extends PageContext {
 
             // The error page could be inside an include.
 
-            Object newException = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+            Object newException =
+                    request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
 
             // t==null means the attribute was not set.
             if ((newException != null) && (newException == t)) {
@@ -656,12 +894,12 @@ public class PageContextImpl extends PageContext {
             Throwable rootCause = null;
             if (t instanceof JspException || t instanceof ELException ||
                     t instanceof javax.servlet.jsp.el.ELException) {
-                rootCause = t.getCause();
+                rootCause =t.getCause();
             }
 
             if (rootCause != null) {
-                throw new ServletException(
-                        t.getClass().getName() + ": " + t.getMessage(), rootCause);
+                throw new ServletException(t.getClass().getName() + ": "
+                        + t.getMessage(), rootCause);
             }
 
             throw new ServletException(t);
@@ -683,45 +921,50 @@ public class PageContextImpl extends PageContext {
      * @param functionMap
      *            Maps prefix and name to Method
      * @return The result of the evaluation
-     * @throws ELException If an error occurs during the evaluation
      */
     public static Object proprietaryEvaluate(final String expression,
             final Class<?> expectedType, final PageContext pageContext,
             final ProtectedFunctionMapper functionMap)
             throws ELException {
+        Object retValue;
         final ExpressionFactory exprFactory = jspf.getJspApplicationContext(pageContext.getServletContext()).getExpressionFactory();
-        ELContext ctx = pageContext.getELContext();
-        ELContextImpl ctxImpl;
-        if (ctx instanceof ELContextWrapper) {
-            ctxImpl = (ELContextImpl) ((ELContextWrapper) ctx).getWrappedELContext();
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            try {
+                retValue = AccessController
+                        .doPrivileged(new PrivilegedExceptionAction<Object>() {
+
+                            @Override
+                            public Object run() throws Exception {
+                                ELContextImpl ctx = (ELContextImpl) pageContext.getELContext();
+                                ctx.setFunctionMapper(functionMap);
+                                ValueExpression ve = exprFactory.createValueExpression(ctx, expression, expectedType);
+                                return ve.getValue(ctx);
+                            }
+                        });
+            } catch (PrivilegedActionException ex) {
+                Exception realEx = ex.getException();
+                if (realEx instanceof ELException) {
+                    throw (ELException) realEx;
+                } else {
+                    throw new ELException(realEx);
+                }
+            }
         } else {
-            ctxImpl = (ELContextImpl) ctx;
+            ELContextImpl ctx = (ELContextImpl) pageContext.getELContext();
+            ctx.setFunctionMapper(functionMap);
+            ValueExpression ve = exprFactory.createValueExpression(ctx, expression, expectedType);
+            retValue = ve.getValue(ctx);
         }
-        ctxImpl.setFunctionMapper(functionMap);
-        ValueExpression ve = exprFactory.createValueExpression(ctx, expression, expectedType);
-        return ve.getValue(ctx);
+
+        return retValue;
     }
 
     @Override
     public ELContext getELContext() {
-        if (elContext == null) {
-            elContext = applicationContext.createELContext(this);
-            if (servlet instanceof JspSourceImports) {
-                ImportHandler ih = elContext.getImportHandler();
-                Set<String> packageImports = ((JspSourceImports) servlet).getPackageImports();
-                if (packageImports != null) {
-                    for (String packageImport : packageImports) {
-                        ih.importPackage(packageImport);
-                    }
-                }
-                Set<String> classImports = ((JspSourceImports) servlet).getClassImports();
-                if (classImports != null) {
-                    for (String classImport : classImports) {
-                        ih.importClass(classImport);
-                    }
-                }
-            }
+        if (this.elContext == null) {
+            this.elContext = this.applicationContext.createELContext(this);
         }
         return this.elContext;
     }
+
 }

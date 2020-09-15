@@ -17,16 +17,17 @@
  */
 package org.apache.tomcat.util.bcel.classfile;
 
-import org.apache.tomcat.util.bcel.Const;
+import org.apache.tomcat.util.bcel.Constants;
 
 public class ClassElementValue extends ElementValue
 {
     // For primitive types and string type, this points to the value entry in
     // the cpool
     // For 'class' this points to the class entry in the cpool
-    private final int idx;
+    private int idx;
 
-    ClassElementValue(final int type, final int idx, final ConstantPool cpool) {
+    public ClassElementValue(int type, int idx, ConstantPool cpool)
+    {
         super(type, cpool);
         this.idx = idx;
     }
@@ -35,8 +36,8 @@ public class ClassElementValue extends ElementValue
     @Override
     public String stringifyValue()
     {
-        final ConstantUtf8 cu8 = (ConstantUtf8) super.getConstantPool().getConstant(idx,
-                Const.CONSTANT_Utf8);
+        ConstantUtf8 cu8 = (ConstantUtf8) cpool.getConstant(idx,
+                Constants.CONSTANT_Utf8);
         return cu8.getBytes();
     }
 }

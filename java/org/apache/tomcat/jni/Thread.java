@@ -24,7 +24,7 @@ package org.apache.tomcat.jni;
 public class Thread {
 
     /**
-     * @return the current thread ID handle.
+     * Get the current thread ID handle.
      */
     public static native long current();
 

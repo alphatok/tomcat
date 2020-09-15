@@ -19,15 +19,13 @@ package org.apache.catalina.webresources;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.apache.catalina.webresources.war.Handler;
 
 public class TomcatURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
     private static final String WAR_PROTOCOL = "war";
-    private static final String CLASSPATH_PROTOCOL = "classpath";
 
     // Singleton instance
     private static volatile TomcatURLStreamHandlerFactory instance = null;
@@ -36,8 +34,6 @@ public class TomcatURLStreamHandlerFactory implements URLStreamHandlerFactory {
      * Obtain a reference to the singleton instance. It is recommended that
      * callers check the value of {@link #isRegistered()} before using the
      * returned instance.
-     *
-     * @return A reference to the singleton instance
      */
     public static TomcatURLStreamHandlerFactory getInstance() {
         getInstanceInternal(true);
@@ -97,22 +93,14 @@ public class TomcatURLStreamHandlerFactory implements URLStreamHandlerFactory {
      * Release references to any user provided factories that have been loaded
      * using the provided class loader. Called during web application stop to
      * prevent memory leaks.
-     *
-     * @param classLoader The class loader to release
      */
     public static void release(ClassLoader classLoader) {
-        if (instance == null) {
-            return;
-        }
-        List<URLStreamHandlerFactory> factories = instance.userFactories;
-        for (URLStreamHandlerFactory factory : factories) {
-            ClassLoader factoryLoader = factory.getClass().getClassLoader();
+        Iterator<URLStreamHandlerFactory> iter = instance.userFactories.iterator();
+        while (iter.hasNext()) {
+            ClassLoader factoryLoader = iter.next().getClass().getClassLoader();
             while (factoryLoader != null) {
                 if (classLoader.equals(factoryLoader)) {
-                    // Implementation note: userFactories is a
-                    // CopyOnWriteArrayList, so items are removed with
-                    // List.remove() instead of usual Iterator.remove()
-                    factories.remove(factory);
+                    iter.remove();
                     break;
                 }
                 factoryLoader = factoryLoader.getParent();
@@ -142,9 +130,6 @@ public class TomcatURLStreamHandlerFactory implements URLStreamHandlerFactory {
      * {@link URL#setURLStreamHandlerFactory(URLStreamHandlerFactory)} and
      * Tomcat needs to register a handler, provide a mechanism to allow
      * applications to register their own handlers.
-     *
-     * @param factory The user provided factory to add to the factories Tomcat
-     *                has already registered
      */
     public void addUserFactory(URLStreamHandlerFactory factory) {
         userFactories.add(factory);
@@ -157,9 +142,7 @@ public class TomcatURLStreamHandlerFactory implements URLStreamHandlerFactory {
         // Tomcat's handler always takes priority so applications can't override
         // it.
         if (WAR_PROTOCOL.equals(protocol)) {
-            return new Handler();
-        } else if (CLASSPATH_PROTOCOL.equals(protocol)) {
-            return new ClasspathURLStreamHandler();
+            return new WarURLStreamHandler();
         }
 
         // Application handlers

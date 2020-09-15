@@ -48,12 +48,50 @@ public class BasicAuthenticator extends AuthenticatorBase {
 
     // --------------------------------------------------------- Public Methods
 
+    /**
+     * Authenticate the user making this request, based on the specified
+     * login configuration.  Return <code>true</code> if any specified
+     * constraint has been satisfied, or <code>false</code> if we have
+     * created a response challenge already.
+     *
+     * @param request Request we are processing
+     * @param response Response we are creating
+     *
+     * @exception IOException if an input/output error occurs
+     */
     @Override
-    protected boolean doAuthenticate(Request request, HttpServletResponse response)
+    public boolean authenticate(Request request, HttpServletResponse response)
             throws IOException {
 
-        if (checkForCachedAuthentication(request, response, true)) {
-            return true;
+        // Have we already authenticated someone?
+        Principal principal = request.getUserPrincipal();
+        String ssoId = (String) request.getNote(Constants.REQ_SSOID_NOTE);
+        if (principal != null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Already authenticated '" + principal.getName() + "'");
+            }
+            // Associate the session with any existing SSO session
+            if (ssoId != null) {
+                associate(ssoId, request.getSessionInternal(true));
+            }
+            return (true);
+        }
+
+        // Is there an SSO session against which we can try to reauthenticate?
+        if (ssoId != null) {
+            if (log.isDebugEnabled()) {
+                log.debug("SSO Id " + ssoId + " set; attempting " +
+                          "reauthentication");
+            }
+            /* Try to reauthenticate using data cached by SSO.  If this fails,
+               either the original SSO logon was of DIGEST or SSL (which
+               we can't reauthenticate ourselves because there is no
+               cached username and password), or the realm denied
+               the user's reauthentication for some reason.
+               In either case we have to prompt the user for a logon */
+            if (reauthenticateFromSSO(ssoId, request)) {
+                return true;
+            }
         }
 
         // Validate any credentials already included with this request
@@ -70,11 +108,11 @@ public class BasicAuthenticator extends AuthenticatorBase {
                 String username = credentials.getUsername();
                 String password = credentials.getPassword();
 
-                Principal principal = context.getRealm().authenticate(username, password);
+                principal = context.getRealm().authenticate(username, password);
                 if (principal != null) {
                     register(request, response, principal,
                         HttpServletRequest.BASIC_AUTH, username, password);
-                    return true;
+                    return (true);
                 }
             }
             catch (IllegalArgumentException iae) {
@@ -91,7 +129,7 @@ public class BasicAuthenticator extends AuthenticatorBase {
         value.append('\"');
         response.setHeader(AUTH_HEADER_NAME, value.toString());
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-        return false;
+        return (false);
 
     }
 
@@ -106,7 +144,7 @@ public class BasicAuthenticator extends AuthenticatorBase {
      * as per RFC 2617 section 2, and the Base64 encoded credentials as
      * per RFC 2045 section 6.8.
      */
-    public static class BasicCredentials {
+    protected static class BasicCredentials {
 
         // the only authentication method supported by this parser
         // note: we include single white space as its delimiter

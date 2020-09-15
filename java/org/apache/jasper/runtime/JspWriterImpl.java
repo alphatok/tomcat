@@ -19,12 +19,15 @@ package org.apache.jasper.runtime;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 import javax.servlet.ServletResponse;
 import javax.servlet.jsp.JspWriter;
 
 import org.apache.jasper.Constants;
 import org.apache.jasper.compiler.Localizer;
+import org.apache.jasper.security.SecurityUtil;
 
 /**
  * Write text to a character-output stream, buffering characters so as
@@ -58,9 +61,8 @@ public class JspWriterImpl extends JspWriter {
      *
      * @param  response A Servlet Response
      * @param  sz       Output-buffer size, a positive integer
-     * @param autoFlush <code>true</code> to automatically flush on buffer
-     *  full, <code>false</code> to throw an overflow exception in that case
-     * @exception  IllegalArgumentException  If sz is &lt;= 0
+     *
+     * @exception  IllegalArgumentException  If sz is <= 0
      */
     public JspWriterImpl(ServletResponse response, int sz,
             boolean autoFlush) {
@@ -81,8 +83,7 @@ public class JspWriterImpl extends JspWriter {
         this.bufferSize=sz;
     }
 
-    /**
-     * Package-level access
+    /** Package-level access
      */
     void recycle() {
         flushed = false;
@@ -96,7 +97,6 @@ public class JspWriterImpl extends JspWriter {
      * Flush the output buffer to the underlying character stream, without
      * flushing the stream itself.  This method is non-private only so that it
      * may be invoked by PrintStream.
-     * @throws IOException Error writing buffered data
      */
     protected final void flushBuffer() throws IOException {
         if (bufferSize == 0)
@@ -116,6 +116,19 @@ public class JspWriterImpl extends JspWriter {
         }
     }
 
+    private String getLocalizeMessage(final String message){
+        if (SecurityUtil.isPackageProtectionEnabled()){
+            return AccessController.doPrivileged(new PrivilegedAction<String>(){
+                @Override
+                public String run(){
+                    return Localizer.getMessage(message);
+                }
+            });
+        } else {
+            return Localizer.getMessage(message);
+        }
+    }
+
     /**
      * Discard the output buffer.
      */
@@ -124,10 +137,10 @@ public class JspWriterImpl extends JspWriter {
         if ((bufferSize == 0) && (out != null))
             // clear() is illegal after any unbuffered output (JSP.5.5)
             throw new IllegalStateException(
-                    Localizer.getMessage("jsp.error.ise_on_clear"));
+                    getLocalizeMessage("jsp.error.ise_on_clear"));
         if (flushed)
             throw new IOException(
-                    Localizer.getMessage("jsp.error.attempt_to_clear_flushed_buffer"));
+                    getLocalizeMessage("jsp.error.attempt_to_clear_flushed_buffer"));
         ensureOpen();
         nextChar = 0;
     }
@@ -136,13 +149,13 @@ public class JspWriterImpl extends JspWriter {
     public void clearBuffer() throws IOException {
         if (bufferSize == 0)
             throw new IllegalStateException(
-                    Localizer.getMessage("jsp.error.ise_on_clear"));
+                    getLocalizeMessage("jsp.error.ise_on_clear"));
         ensureOpen();
         nextChar = 0;
     }
 
     private final void bufferOverflow() throws IOException {
-        throw new IOException(Localizer.getMessage("jsp.error.overflow"));
+        throw new IOException(getLocalizeMessage("jsp.error.overflow"));
     }
 
     /**
@@ -317,6 +330,9 @@ public class JspWriterImpl extends JspWriter {
     }
 
 
+    private static final String lineSeparator =
+            System.getProperty("line.separator");
+
     /**
      * Write a line separator.  The line separator string is defined by the
      * system property <tt>line.separator</tt>, and is not necessarily a single
@@ -327,7 +343,7 @@ public class JspWriterImpl extends JspWriter {
 
     @Override
     public void newLine() throws IOException {
-        write(System.lineSeparator());
+        write(lineSeparator);
     }
 
 

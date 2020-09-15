@@ -16,6 +16,7 @@
  */
 package org.apache.catalina;
 
+
 import java.util.EventObject;
 
 /**
@@ -55,18 +56,14 @@ public final class ContainerEvent extends EventObject {
 
     /**
      * Return the event data of this event.
-     *
-     * @return The data, if any, associated with this event.
      */
     public Object getData() {
-        return this.data;
+        return (this.data);
     }
 
 
     /**
      * Return the Container on which this event occurred.
-     *
-     * @return The Container on which this event occurred.
      */
     public Container getContainer() {
         return (Container) getSource();
@@ -75,13 +72,9 @@ public final class ContainerEvent extends EventObject {
 
     /**
      * Return the event type of this event.
-     *
-     * @return The event type of this event. Although this is a String, it is
-     *         safe to rely on the value returned by this method remaining
-     *         consistent between point releases.
      */
     public String getType() {
-        return this.type;
+        return (this.type);
     }
 
 
@@ -90,7 +83,7 @@ public final class ContainerEvent extends EventObject {
      */
     @Override
     public String toString() {
-        return "ContainerEvent['" + getContainer() + "','" +
-                getType() + "','" + getData() + "']";
+        return ("ContainerEvent['" + getContainer() + "','" +
+                getType() + "','" + getData() + "']");
     }
 }

@@ -21,6 +21,8 @@ package org.apache.tomcat.util.bcel.classfile;
  * Thrown when the BCEL attempts to read a class file and determines
  * that the file is malformed or otherwise cannot be interpreted as a
  * class file.
+ *
+ * @author  <A HREF="mailto:m.dahm@gmx.de">M. Dahm</A>
  */
 public class ClassFormatException extends RuntimeException {
 
@@ -31,7 +33,7 @@ public class ClassFormatException extends RuntimeException {
     }
 
 
-    public ClassFormatException(final String s) {
+    public ClassFormatException(String s) {
         super(s);
     }
 }

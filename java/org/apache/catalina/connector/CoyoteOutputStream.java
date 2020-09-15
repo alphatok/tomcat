@@ -17,7 +17,6 @@
 package org.apache.catalina.connector;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.WriteListener;
@@ -32,7 +31,8 @@ import org.apache.tomcat.util.res.StringManager;
  */
 public class CoyoteOutputStream extends ServletOutputStream {
 
-    protected static final StringManager sm = StringManager.getManager(CoyoteOutputStream.class);
+    protected static final StringManager sm =
+            StringManager.getManager(Constants.Package);
 
 
     // ----------------------------------------------------- Instance Variables
@@ -55,7 +55,8 @@ public class CoyoteOutputStream extends ServletOutputStream {
      * Prevent cloning the facade.
      */
     @Override
-    protected Object clone() throws CloneNotSupportedException {
+    protected Object clone()
+        throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
     }
 
@@ -100,15 +101,6 @@ public class CoyoteOutputStream extends ServletOutputStream {
     }
 
 
-    public void write(ByteBuffer from) throws IOException {
-        boolean nonBlocking = checkNonBlockingWrite();
-        ob.write(from);
-        if (nonBlocking) {
-            checkRegisterForWrite();
-        }
-    }
-
-
     /**
      * Will send the buffer to the client.
      */
@@ -125,7 +117,7 @@ public class CoyoteOutputStream extends ServletOutputStream {
     /**
      * Checks for concurrent writes which are not permitted. This object has no
      * state information so the call chain is
-     * CoyoteOutputStream->OutputBuffer->CoyoteResponse.
+     * CoyoyeOutputStream->OutputBuffer->CoyoteResponse.
      *
      * @return <code>true</code> if this OutputStream is currently in
      *         non-blocking mode.
@@ -133,7 +125,8 @@ public class CoyoteOutputStream extends ServletOutputStream {
     private boolean checkNonBlockingWrite() {
         boolean nonBlocking = !ob.isBlocking();
         if (nonBlocking && !ob.isReady()) {
-            throw new IllegalStateException(sm.getString("coyoteOutputStream.nbNotready"));
+            throw new IllegalStateException(
+                    sm.getString("coyoteOutputStream.nbNotready"));
         }
         return nonBlocking;
     }
@@ -153,7 +146,8 @@ public class CoyoteOutputStream extends ServletOutputStream {
 
 
     @Override
-    public void close() throws IOException {
+    public void close()
+        throws IOException {
         ob.close();
     }
 

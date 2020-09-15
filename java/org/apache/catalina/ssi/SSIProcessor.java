@@ -85,7 +85,6 @@ public class SSIProcessor {
      *
      * @param reader
      *            the reader to read the file containing SSIs from
-     * @param lastModifiedDate resource last modification date
      * @param writer
      *            the writer to write the file with the SSIs processed.
      * @return the most current modified date resulting from any SSI commands
@@ -186,8 +185,7 @@ public class SSIProcessor {
      *
      * @param cmd
      *            a value of type 'StringBuilder'
-     * @param start index on which parsing will start
-     * @return an array with the parameter names
+     * @return a value of type 'String[]'
      */
     protected String[] parseParamNames(StringBuilder cmd, int start) {
         int bIdx = start;
@@ -237,9 +235,7 @@ public class SSIProcessor {
      *
      * @param cmd
      *            a value of type 'StringBuilder'
-     * @param start index on which parsing will start
-     * @param count number of values which should be parsed
-     * @return an array with the parameter values
+     * @return a value of type 'String[]'
      */
     protected String[] parseParamValues(StringBuilder cmd, int start, int count) {
         int valIndex = 0;

@@ -19,8 +19,6 @@ package org.apache.jasper.compiler;
 import java.io.File;
 
 import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -77,21 +75,14 @@ public class TestELInterpreterFactory extends TomcatBaseTest {
 
         context.removeAttribute(ELInterpreter.class.getName());
 
-        ctx.stop();
-        ctx.addApplicationListener(Bug54239Listener.class.getName());
-        ctx.start();
 
-        interpreter = ELInterpreterFactory.getELInterpreter(ctx.getServletContext());
+        context.setInitParameter(ELInterpreter.class.getName(),
+                SimpleELInterpreter.class.getName());
+
+        interpreter = ELInterpreterFactory.getELInterpreter(context);
         Assert.assertNotNull(interpreter);
         Assert.assertTrue(interpreter instanceof SimpleELInterpreter);
-    }
 
-    public static class Bug54239Listener implements ServletContextListener {
-
-        @Override
-        public void contextInitialized(ServletContextEvent sce) {
-            sce.getServletContext().setInitParameter(ELInterpreter.class.getName(),
-                    SimpleELInterpreter.class.getName());
-        }
+        context.removeAttribute(ELInterpreter.class.getName());
     }
 }

@@ -91,7 +91,7 @@ public class JAASCallbackHandler implements CallbackHandler {
         this.username = username;
 
         if (realm.hasMessageDigest()) {
-            this.password = realm.getCredentialHandler().mutate(password);
+            this.password = realm.digest(password);
         }
         else {
             this.password = password;
@@ -110,7 +110,8 @@ public class JAASCallbackHandler implements CallbackHandler {
     /**
      * The string manager for this package.
      */
-    protected static final StringManager sm = StringManager.getManager(JAASCallbackHandler.class);
+    protected static final StringManager sm =
+        StringManager.getManager(Constants.Package);
 
     /**
      * The password to be authenticated with.
@@ -214,8 +215,6 @@ public class JAASCallbackHandler implements CallbackHandler {
                     cb.setText(md5a2);
                 } else if (cb.getPrompt().equals("authMethod")) {
                     cb.setText(authMethod);
-                } else if (cb.getPrompt().equals("catalinaBase")) {
-                    cb.setText(realm.getContainer().getCatalinaBase().getAbsolutePath());
                 } else {
                     throw new UnsupportedCallbackException(callbacks[i]);
                 }

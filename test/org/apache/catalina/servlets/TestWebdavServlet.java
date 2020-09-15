@@ -30,11 +30,12 @@ import org.junit.Test;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
 import org.apache.tomcat.util.buf.ByteChunk;
+import org.apache.tomcat.util.descriptor.web.ApplicationListener;
 import org.apache.tomcat.websocket.server.WsContextListener;
 
 public class TestWebdavServlet extends TomcatBaseTest {
 
-    /*
+    /**
      * Test attempting to access special paths (WEB-INF/META-INF) using WebdavServlet
      */
     @Test
@@ -49,7 +50,7 @@ public class TestWebdavServlet extends TomcatBaseTest {
             tomcat.addWebapp(null, "/examples", appDir.getAbsolutePath());
 
         Tomcat.addServlet(ctx, "webdav", new WebdavServlet());
-        ctx.addServletMappingDecoded("/*", "webdav");
+        ctx.addServletMapping("/*", "webdav");
 
         tomcat.start();
 
@@ -77,8 +78,8 @@ public class TestWebdavServlet extends TomcatBaseTest {
 
     }
 
-    /*
-     * Test https://bz.apache.org/bugzilla/show_bug.cgi?id=50026
+    /**
+     * Test https://issues.apache.org/bugzilla/show_bug.cgi?id=50026
      * Verify protection of special paths with re-mount of web app resource root.
      */
     @Test
@@ -93,8 +94,9 @@ public class TestWebdavServlet extends TomcatBaseTest {
             tomcat.addWebapp(null, "/examples", appDir.getAbsolutePath());
 
         Tomcat.addServlet(ctx, "webdav", new WebdavServlet());
-        ctx.addServletMappingDecoded("/webdav/*", "webdav");
-        ctx.addApplicationListener(WsContextListener.class.getName());
+        ctx.addServletMapping("/webdav/*", "webdav");
+        ctx.addApplicationListener(new ApplicationListener(
+                WsContextListener.class.getName(), false));
 
         tomcat.start();
 

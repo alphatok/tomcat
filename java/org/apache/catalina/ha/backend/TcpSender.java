@@ -180,7 +180,6 @@ public class TcpSender
 
     /**
      * Close connection.
-     * @param i The index of the connection that will be closed
      */
     protected void close(int i) {
         try {

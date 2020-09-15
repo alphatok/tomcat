@@ -14,14 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.apache.catalina;
+
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 
+
 /**
  * A <b>Manager</b> manages the pool of Sessions that are associated with a
- * particular Context. Different Manager implementations may support
+ * particular Container.  Different Manager implementations may support
  * value-added features such as the persistent storage of session data,
  * as well as migrating sessions for distributable web applications.
  * <p>
@@ -39,22 +43,40 @@ import java.io.IOException;
  */
 public interface Manager {
 
+
     // ------------------------------------------------------------- Properties
 
+
     /**
-     * Get the Context with which this Manager is associated.
+     * Return the Container with which this Manager is associated.
      *
-     * @return The associated Context
+     * @deprecated Use {@link #getContext()}. This method will be removed in
+     *             Tomcat 9 onwards.
+     */
+    @Deprecated
+    public Container getContainer();
+
+
+    /**
+     * Set the Container with which this Manager is associated.
+     *
+     * @param container The newly associated Container
+     *
+     * @deprecated Use {@link #setContext(Context)}. This method will be removed in
+     *             Tomcat 9 onwards.
+     */
+    @Deprecated
+    public void setContainer(Container container);
+
+
+    /**
+     * Return the Context with which this Manager is associated.
      */
     public Context getContext();
 
 
     /**
-     * Set the Context with which this Manager is associated. The Context must
-     * be set to a non-null value before the Manager is first used. Multiple
-     * calls to this method before first use are permitted. Once the Manager has
-     * been used, this method may not be used to change the Context (including
-     * setting a {@code null} value) that the Manager is associated with.
+     * Set the Container with which this Manager is associated.
      *
      * @param context The newly associated Context
      */
@@ -62,17 +84,54 @@ public interface Manager {
 
 
     /**
-     * @return the session id generator
+     * Return the distributable flag for the sessions supported by
+     * this Manager.
      */
-    public SessionIdGenerator getSessionIdGenerator();
+    public boolean getDistributable();
 
 
     /**
-     * Sets the session id generator
+     * Set the distributable flag for the sessions supported by this
+     * Manager.  If this flag is set, all user data objects added to
+     * sessions associated with this manager must implement Serializable.
      *
-     * @param sessionIdGenerator The session id generator
+     * @param distributable The new distributable flag
      */
-    public void setSessionIdGenerator(SessionIdGenerator sessionIdGenerator);
+    public void setDistributable(boolean distributable);
+
+
+    /**
+     * Return the default maximum inactive interval (in seconds)
+     * for Sessions created by this Manager.
+     */
+    public int getMaxInactiveInterval();
+
+
+    /**
+     * Set the default maximum inactive interval (in seconds)
+     * for Sessions created by this Manager.
+     *
+     * @param interval The new default value
+     */
+    public void setMaxInactiveInterval(int interval);
+
+
+    /**
+     * Gets the session id length (in bytes) of Sessions created by
+     * this Manager.
+     *
+     * @return The session id length
+     */
+    public int getSessionIdLength();
+
+
+    /**
+     * Sets the session id length (in bytes) for Sessions created by this
+     * Manager.
+     *
+     * @param idLength The session id length
+     */
+    public void setSessionIdLength(int idLength);
 
 
     /**
@@ -190,9 +249,8 @@ public interface Manager {
      * @return  The current rate (in sessions per minute) of session expiration
      */
     public int getSessionExpireRate();
-
-
     // --------------------------------------------------------- Public Methods
+
 
     /**
      * Add this Session to the set of active Sessions for this Manager.
@@ -232,8 +290,6 @@ public interface Manager {
      * Get a session from the recycled ones or create a new empty one.
      * The PersistentManager manager does not need to create session data
      * because it reads it from the Store.
-     *
-     * @return An empty Session object
      */
     public Session createEmptySession();
 
@@ -251,9 +307,6 @@ public interface Manager {
      *  method of the returned session.
      * @exception IllegalStateException if a new session cannot be
      *  instantiated for any reason
-     *
-     * @return An empty Session object with the given ID or a newly created
-     *         session ID if none was specified
      */
     public Session createSession(String sessionId);
 
@@ -268,9 +321,6 @@ public interface Manager {
      *  instantiated for any reason
      * @exception IOException if an input/output error occurs while
      *  processing this request
-     *
-     * @return the request session or {@code null} if a session with the
-     *         requested ID could not be found
      */
     public Session findSession(String id) throws IOException;
 
@@ -278,8 +328,6 @@ public interface Manager {
     /**
      * Return the set of active Sessions associated with this Manager.
      * If this Manager has no active Sessions, a zero-length array is returned.
-     *
-     * @return All the currently active sessions managed by this manager
      */
     public Session[] findSessions();
 
@@ -330,25 +378,11 @@ public interface Manager {
      */
     public void unload() throws IOException;
 
+     /**
+      * This method will be invoked by the context/container on a periodic
+      * basis and allows the manager to implement
+      * a method that executes periodic tasks, such as expiring sessions etc.
+      */
+     public void backgroundProcess();
 
-    /**
-     * This method will be invoked by the context/container on a periodic
-     * basis and allows the manager to implement
-     * a method that executes periodic tasks, such as expiring sessions etc.
-     */
-    public void backgroundProcess();
-
-
-    /**
-     * Would the Manager distribute the given session attribute? Manager
-     * implementations may provide additional configuration options to control
-     * which attributes are distributable.
-     *
-     * @param name  The attribute name
-     * @param value The attribute value
-     *
-     * @return {@code true} if the Manager would distribute the given attribute
-     *         otherwise {@code false}
-     */
-    public boolean willAttributeDistribute(String name, Object value);
 }

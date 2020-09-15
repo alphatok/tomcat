@@ -30,7 +30,7 @@ public class TestReflectionUtil {
      */
     @Test(expected=MethodNotFoundException.class)
     public void testBug54370a() {
-        ReflectionUtil.getMethod(null, BASE, "testA",
+        ReflectionUtil.getMethod(BASE, "testA",
                 new Class[] {null, String.class},
                 new Object[] {null, ""});
     }
@@ -42,21 +42,21 @@ public class TestReflectionUtil {
      */
     @Test(expected=MethodNotFoundException.class)
     public void testBug54370b() {
-        ReflectionUtil.getMethod(null, BASE, "testB",
+        ReflectionUtil.getMethod(BASE, "testB",
                 new Class[] {null, String.class},
                 new Object[] {null, ""});
     }
 
     @Test
     public void testBug54370c() {
-        ReflectionUtil.getMethod(null, BASE, "testC",
+        ReflectionUtil.getMethod(BASE, "testC",
                 new Class[] {null},
                 new Object[] {null});
     }
 
     @Test
     public void testBug54370d() {
-        ReflectionUtil.getMethod(null, BASE, "testD",
+        ReflectionUtil.getMethod(BASE, "testD",
                 new Class[] {null},
                 new Object[] {null});
     }

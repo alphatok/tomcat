@@ -27,18 +27,18 @@ import java.util.jar.Manifest;
  */
 public interface WebResource {
     /**
-     * @return {@link java.io.File#lastModified()}.
+     * See {@link java.io.File#lastModified()}.
      */
     long getLastModified();
 
     /**
-     * @return the last modified time of this resource in the correct format for
+     * Return the last modified time of this resource in the correct format for
      * the HTTP Last-Modified header as specified by RFC 2616.
      */
     String getLastModifiedHttp();
 
     /**
-     * @return {@link java.io.File#exists()}.
+     * See {@link java.io.File#exists()}.
      */
     boolean exists();
 
@@ -48,48 +48,46 @@ public interface WebResource {
      * additional {@link WebResourceSet}. For example, if an external
      * directory is mapped to /WEB-INF/lib in an otherwise empty web
      * application, /WEB-INF will be represented as a virtual resource.
-     *
-     * @return <code>true</code> for a virtual resource
      */
     boolean isVirtual();
 
     /**
-     * @return {@link java.io.File#isDirectory()}.
+     * See {@link java.io.File#isDirectory()}.
      */
     boolean isDirectory();
 
     /**
-     * @return {@link java.io.File#isFile()}.
+     * See {@link java.io.File#isFile()}.
      */
     boolean isFile();
 
     /**
-     * @return {@link java.io.File#delete()}.
+     * See {@link java.io.File#delete()}.
      */
     boolean delete();
 
     /**
-     * @return {@link java.io.File#getName()}.
+     * See {@link java.io.File#getName()}.
      */
     String getName();
 
     /**
-     * @return {@link java.io.File#length()}.
+     * See {@link java.io.File#length()}.
      */
     long getContentLength();
 
     /**
-     * @return {@link java.io.File#getCanonicalPath()}.
+     * See {@link java.io.File#getCanonicalPath()}.
      */
     String getCanonicalPath();
 
     /**
-     * @return {@link java.io.File#canRead()}.
+     * See {@link java.io.File#canRead()}.
      */
     boolean canRead();
 
     /**
-     * @return The path of this resource relative to the web application root. If the
+     * The path of this resource relative to the web application root. If the
      * resource is a directory, the return value will end in '/'.
      */
     String getWebappPath();
@@ -104,13 +102,11 @@ public interface WebResource {
 
     /**
      * Set the MIME type for this Resource.
-     *
-     * @param mimeType The mime type that will be associated with the resource
      */
     void setMimeType(String mimeType);
 
     /**
-     * @return the MIME type for this Resource.
+     * Get the MIME type for this Resource.
      */
     String getMimeType();
 
@@ -124,37 +120,30 @@ public interface WebResource {
     InputStream getInputStream();
 
     /**
-     * @return the cached binary content of this resource.
+     * Obtain the cached binary content of this resource.
      */
     byte[] getContent();
 
     /**
-     * @return The time the file was created. If not available, the result of
+     * The time the file was created. If not available, the result of
      * {@link #getLastModified()} will be returned.
      */
     long getCreation();
 
     /**
-     * @return a URL to access the resource or <code>null</code> if no such URL
+     * Obtain a URL to access the resource or <code>null</code> if no such URL
      * is available or if the resource does not exist.
      */
     URL getURL();
 
     /**
-     * @return the code base for this resource that will be used when looking up the
-     * assigned permissions for the code base in the security policy file when
-     * running under a security manager.
-     */
-    URL getCodeBase();
-
-    /**
-     * @return a reference to the WebResourceRoot of which this WebResource is a
+     * Obtain a reference to the WebResourceRoot of which this WebResource is a
      * part.
      */
     WebResourceRoot getWebResourceRoot();
 
     /**
-     * @return the certificates that were used to sign this resource to verify
+     * Obtain the certificates that were used to sign this resource to verify
      * it or @null if none.
      *
      * @see java.util.jar.JarEntry#getCertificates()
@@ -162,7 +151,7 @@ public interface WebResource {
     Certificate[] getCertificates();
 
     /**
-     * @return the manifest associated with this resource or @null if none.
+     * Obtain the manifest associated with this resource or @null if none.
      *
      * @see java.util.jar.JarFile#getManifest()
      */

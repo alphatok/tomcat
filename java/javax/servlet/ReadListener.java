@@ -32,14 +32,14 @@ public interface ReadListener extends java.util.EventListener{
      * {@link ServletInputStream#isReady()} has returned false and data has
      * subsequently become available to read.
      *
-     * @throws IOException id an I/O error occurs while processing the event
+     * @throws IOException
      */
     public abstract void onDataAvailable() throws IOException;
 
     /**
      * Invoked when the request body has been fully read.
      *
-     * @throws IOException id an I/O error occurs while processing the event
+     * @throws IOException
      */
     public abstract void onAllDataRead() throws IOException;
 

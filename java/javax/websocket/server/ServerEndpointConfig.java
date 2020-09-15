@@ -16,7 +16,6 @@
  */
 package javax.websocket.server;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -40,7 +39,6 @@ public interface ServerEndpointConfig extends EndpointConfig {
     /**
      * Returns the path at which this WebSocket server endpoint has been
      * registered. It may be a path or a level 0 URI template.
-     * @return The registered path
      */
     String getPath();
 
@@ -176,10 +174,9 @@ public interface ServerEndpointConfig extends EndpointConfig {
                     Class<Configurator> clazz =
                             (Class<Configurator>) Class.forName(
                                     DEFAULT_IMPL_CLASSNAME);
-                    result = clazz.getConstructor().newInstance();
-                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
-                        IllegalArgumentException | InvocationTargetException |
-                        NoSuchMethodException | SecurityException e) {
+                    result = clazz.newInstance();
+                } catch (ClassNotFoundException | InstantiationException |
+                        IllegalAccessException e) {
                     // No options left. Just return null.
                 }
             }

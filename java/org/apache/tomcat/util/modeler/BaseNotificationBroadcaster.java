@@ -82,7 +82,10 @@ public class BaseNotificationBroadcaster implements NotificationBroadcaster {
             // Optimization to coalesce attribute name filters
             if (filter instanceof BaseAttributeFilter) {
                 BaseAttributeFilter newFilter = (BaseAttributeFilter) filter;
-                for (BaseNotificationBroadcasterEntry item : entries) {
+                Iterator<BaseNotificationBroadcasterEntry> items =
+                    entries.iterator();
+                while (items.hasNext()) {
+                    BaseNotificationBroadcasterEntry item = items.next();
                     if ((item.listener == listener) &&
                         (item.filter != null) &&
                         (item.filter instanceof BaseAttributeFilter) &&
@@ -118,7 +121,9 @@ public class BaseNotificationBroadcaster implements NotificationBroadcaster {
      */
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
-        return new MBeanNotificationInfo[0];
+
+        return (new MBeanNotificationInfo[0]);
+
     }
 
 
@@ -156,7 +161,10 @@ public class BaseNotificationBroadcaster implements NotificationBroadcaster {
     public void sendNotification(Notification notification) {
 
         synchronized (entries) {
-            for (BaseNotificationBroadcasterEntry item : entries) {
+            Iterator<BaseNotificationBroadcasterEntry> items =
+                entries.iterator();
+            while (items.hasNext()) {
+                BaseNotificationBroadcasterEntry item = items.next();
                 if ((item.filter != null) &&
                     (!item.filter.isNotificationEnabled(notification)))
                     continue;

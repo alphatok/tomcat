@@ -19,6 +19,7 @@ package javax.servlet.http;
 import java.util.BitSet;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -29,6 +30,8 @@ public class TestCookie {
     public static final BitSet CTL;   // <any US-ASCII control character (octets 0 - 31) and DEL (127)>
     public static final BitSet SEPARATORS;
     public static final BitSet TOKEN; // 1*<any CHAR except CTLs or separators>
+
+    public static final BitSet NETSCAPE_NAME; // "any character except comma, semicolon and whitespace"
 
     static {
         CHAR = new BitSet(256);
@@ -47,6 +50,13 @@ public class TestCookie {
         TOKEN.or(CHAR); // any CHAR
         TOKEN.andNot(CTL); // except CTLs
         TOKEN.andNot(SEPARATORS); // or separators
+
+        NETSCAPE_NAME = new BitSet(256);
+        NETSCAPE_NAME.or(CHAR);
+        NETSCAPE_NAME.andNot(CTL);
+        NETSCAPE_NAME.clear(';');
+        NETSCAPE_NAME.clear(',');
+        NETSCAPE_NAME.clear(' ');
     }
 
     @Test
@@ -67,87 +77,85 @@ public class TestCookie {
     }
 
     @Test
-    public void defaultImpliesNetscape() {
-        // $Foo is allowed by Netscape but not by RFC2109
-        Cookie cookie = new Cookie("$Foo", null);
-        Assert.assertEquals("$Foo", cookie.getName());
+    public void actualCharactersAllowedInName() {
+        checkCharInName(NETSCAPE_NAME);
     }
 
-    @Test
-    public void tokenVersion() {
-        Cookie cookie = new Cookie("Version", null);
-        Assert.assertEquals("Version", cookie.getName());
-    }
-
-    @Test
-    public void attributeVersion() {
-        Cookie cookie = new Cookie("Comment", null);
-        Assert.assertEquals("Comment", cookie.getName());
-    }
-
-    @Test
-    public void attributeDiscard() {
-        Cookie cookie = new Cookie("Discard", null);
-        Assert.assertEquals("Discard", cookie.getName());
-    }
-
-    @Test
-    public void attributeExpires() {
-        Cookie cookie = new Cookie("Expires", null);
-        Assert.assertEquals("Expires", cookie.getName());
-    }
-
-    @Test
-    public void attributeMaxAge() {
-        Cookie cookie = new Cookie("Max-Age", null);
-        Assert.assertEquals("Max-Age", cookie.getName());
-    }
-
-    @Test
-    public void attributeDomain() {
-        Cookie cookie = new Cookie("Domain", null);
-        Assert.assertEquals("Domain", cookie.getName());
-    }
-
-    @Test
-    public void attributePath() {
-        Cookie cookie = new Cookie("Path", null);
-        Assert.assertEquals("Path", cookie.getName());
-    }
-
-    @Test
-    public void attributeSecure() {
-        Cookie cookie = new Cookie("Secure", null);
-        Assert.assertEquals("Secure", cookie.getName());
-    }
-
-    @Test
-    public void attributeHttpOnly() {
-        Cookie cookie = new Cookie("HttpOnly", null);
-        Assert.assertEquals("HttpOnly", cookie.getName());
-    }
-
-    @Test
-    public void strictNamingImpliesRFC2109() {
-        // Needs to be something RFC6265 allows, but strict naming does not.
+    @Test(expected = IllegalArgumentException.class)
+    public void leadingDollar() {
         @SuppressWarnings("unused")
-        Cookie cookie = new Cookie("$Foo", null);
+        Cookie c = new Cookie("$Version", null);
     }
 
-    public static void checkCharInName(CookieNameValidator validator, BitSet allowed) {
+    @Test(expected = IllegalArgumentException.class)
+    public void tokenVersion() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Version", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeVersion() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Comment", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeDiscard() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Discard", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeExpires() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Expires", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeMaxAge() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Max-Age", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeDomain() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Domain", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributePath() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Path", null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeSecure() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("Secure", null);
+    }
+
+    @Ignore("HttpOnly is not checked for")
+    @Test(expected = IllegalArgumentException.class)
+    public void attributeHttpOnly() {
+        @SuppressWarnings("unused")
+        Cookie c = new Cookie("HttpOnly", null);
+    }
+
+    public static void checkCharInName(BitSet allowed) {
         for (char ch = 0; ch < allowed.size(); ch++) {
-            boolean expected = allowed.get(ch);
+            Boolean expected = Boolean.valueOf(allowed.get(ch));
             String name = "X" + ch + "X";
+            Boolean actual;
             try {
-                validator.validate(name);
-                if (!expected) {
-                    Assert.fail(String.format("Char %d should not be allowed", Integer.valueOf(ch)));
-                }
+                @SuppressWarnings("unused")
+                Cookie c = new Cookie(name, null);
+                actual = Boolean.TRUE;
             } catch (IllegalArgumentException e) {
-                if (expected) {
-                    Assert.fail(String.format("Char %d should be allowed", Integer.valueOf(ch)));
-                }
+                actual = Boolean.FALSE;
             }
+            String msg = String.format("Check for char %d in name", Integer.valueOf(ch));
+            Assert.assertEquals(msg, expected, actual);
         }
     }
 }

@@ -31,8 +31,6 @@ import org.apache.jasper.runtime.JspFactoryImpl;
 import org.apache.jasper.security.SecurityClassLoad;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.InstanceManager;
-import org.apache.tomcat.SimpleInstanceManager;
 import org.xml.sax.SAXException;
 
 /**
@@ -50,9 +48,28 @@ public class JasperInitializer implements ServletContainerInitializer {
     static {
         JspFactoryImpl factory = new JspFactoryImpl();
         SecurityClassLoad.securityClassLoad(factory.getClass().getClassLoader());
-        if (JspFactory.getDefaultFactory() == null) {
-            JspFactory.setDefaultFactory(factory);
+        if( System.getSecurityManager() != null ) {
+            String basePackage = "org.apache.jasper.";
+            try {
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "runtime.JspFactoryImpl$PrivilegedGetPageContext");
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "runtime.JspFactoryImpl$PrivilegedReleasePageContext");
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "runtime.JspRuntimeLibrary");
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "runtime.JspRuntimeLibrary$PrivilegedIntrospectHelper");
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "runtime.ServletResponseWrapperInclude");
+                factory.getClass().getClassLoader().loadClass( basePackage +
+                        "servlet.JspServletWrapper");
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalStateException(ex);
+            }
         }
+
+        // TODO we should play nice and only set this if it's null
+        JspFactory.setDefaultFactory(factory);
     }
 
     @Override
@@ -61,24 +78,19 @@ public class JasperInitializer implements ServletContainerInitializer {
             log.debug(Localizer.getMessage(MSG + ".onStartup", context.getServletContextName()));
         }
 
-        // Setup a simple default Instance Manager
-        if (context.getAttribute(InstanceManager.class.getName())==null) {
-            context.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
-        }
-
         boolean validate = Boolean.parseBoolean(
                 context.getInitParameter(Constants.XML_VALIDATION_TLD_INIT_PARAM));
         String blockExternalString = context.getInitParameter(
                 Constants.XML_BLOCK_EXTERNAL_INIT_PARAM);
         boolean blockExternal;
         if (blockExternalString == null) {
-            blockExternal = true;
+            blockExternal = Constants.IS_SECURITY_ENABLED;
         } else {
             blockExternal = Boolean.parseBoolean(blockExternalString);
         }
 
         // scan the application for TLDs
-        TldScanner scanner = newTldScanner(context, true, validate, blockExternal);
+        TldScanner scanner = new TldScanner(context, true, validate, blockExternal);
         try {
             scanner.scan();
         } catch (IOException | SAXException e) {
@@ -93,10 +105,5 @@ public class JasperInitializer implements ServletContainerInitializer {
         context.setAttribute(TldCache.SERVLET_CONTEXT_ATTRIBUTE_NAME,
                 new TldCache(context, scanner.getUriTldResourcePathMap(),
                         scanner.getTldResourcePathTaglibXmlMap()));
-    }
-
-    protected TldScanner newTldScanner(ServletContext context, boolean namespaceAware,
-            boolean validate, boolean blockExternal) {
-        return new TldScanner(context, namespaceAware, validate, blockExternal);
     }
 }

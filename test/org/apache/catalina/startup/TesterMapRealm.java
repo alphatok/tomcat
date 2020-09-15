@@ -47,6 +47,11 @@ public final class TesterMapRealm extends RealmBase {
     }
 
     @Override
+    protected String getName() {
+        return "MapRealm";
+    }
+
+    @Override
     protected String getPassword(String username) {
         return users.get(username);
     }

@@ -17,12 +17,13 @@
 package org.apache.tomcat.util.descriptor.web;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+import org.apache.tomcat.util.ExceptionUtils;
 import org.apache.tomcat.util.descriptor.DigesterFactory;
-import org.apache.tomcat.util.descriptor.InputSourceUtil;
 import org.apache.tomcat.util.descriptor.XmlErrorHandler;
 import org.apache.tomcat.util.digester.Digester;
 import org.apache.tomcat.util.res.StringManager;
@@ -31,7 +32,7 @@ import org.xml.sax.SAXParseException;
 
 public class WebXmlParser {
 
-    private static final Log log = LogFactory.getLog(WebXmlParser.class);
+    private static final Log log = LogFactory.getLog( WebXmlParser.class );
 
     /**
      * The string resources for this package.
@@ -135,7 +136,15 @@ public class WebXmlParser {
                     source.getSystemId()), e);
             ok = false;
         } finally {
-            InputSourceUtil.close(source);
+            InputStream is = source.getByteStream();
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (Throwable t) {
+                    ExceptionUtils.handleThrowable(t);
+                }
+            }
+
             digester.reset();
             ruleSet.recycle();
         }

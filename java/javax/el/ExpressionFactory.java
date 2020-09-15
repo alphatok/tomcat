@@ -34,6 +34,7 @@ import java.security.PrivilegedAction;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -52,26 +53,38 @@ public abstract class ExpressionFactory {
 
     private static final String PROPERTY_NAME = "javax.el.ExpressionFactory";
 
+    private static final String SEP;
     private static final String PROPERTY_FILE;
 
     private static final CacheValue nullTcclFactory = new CacheValue();
-    private static final Map<CacheKey, CacheValue> factoryCache = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<CacheKey, CacheValue> factoryCache =
+            new ConcurrentHashMap<>();
 
     static {
         if (IS_SECURITY_ENABLED) {
+            SEP = AccessController.doPrivileged(
+                    new PrivilegedAction<String>(){
+                        @Override
+                        public String run() {
+                            return System.getProperty("file.separator");
+                        }
+
+                    }
+            );
             PROPERTY_FILE = AccessController.doPrivileged(
                     new PrivilegedAction<String>(){
                         @Override
                         public String run() {
-                            return System.getProperty("java.home") + File.separator +
-                                    "lib" + File.separator + "el.properties";
+                            return System.getProperty("java.home") + SEP +
+                                    "lib" + SEP + "el.properties";
                         }
 
                     }
             );
         } else {
-            PROPERTY_FILE = System.getProperty("java.home") + File.separator + "lib" +
-                    File.separator + "el.properties";
+            SEP = System.getProperty("file.separator");
+            PROPERTY_FILE = System.getProperty("java.home") + SEP + "lib" +
+                    SEP + "el.properties";
         }
     }
 
@@ -169,20 +182,32 @@ public abstract class ExpressionFactory {
                 }
             }
             if (constructor == null) {
-                result = (ExpressionFactory) clazz.getConstructor().newInstance();
+                result = (ExpressionFactory) clazz.newInstance();
             } else {
                 result =
                     (ExpressionFactory) constructor.newInstance(properties);
             }
 
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException |
-                NoSuchMethodException e) {
+        } catch (InstantiationException e) {
+            throw new ELException(
+                    "Unable to create ExpressionFactory of type: " + clazz.getName(),
+                    e);
+        } catch (IllegalAccessException e) {
+            throw new ELException(
+                    "Unable to create ExpressionFactory of type: " + clazz.getName(),
+                    e);
+        } catch (IllegalArgumentException e) {
             throw new ELException(
                     "Unable to create ExpressionFactory of type: " + clazz.getName(),
                     e);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
-            Util.handleThrowable(cause);
+            if (cause instanceof ThreadDeath) {
+                throw (ThreadDeath) cause;
+            }
+            if (cause instanceof VirtualMachineError) {
+                throw (VirtualMachineError) cause;
+            }
             throw new ELException(
                     "Unable to create ExpressionFactory of type: " + clazz.getName(),
                     e);
@@ -192,15 +217,6 @@ public abstract class ExpressionFactory {
     }
 
     /**
-     * Create a new value expression.
-     *
-     * @param context      The EL context for this evaluation
-     * @param expression   The String representation of the value expression
-     * @param expectedType The expected type of the result of evaluating the
-     *                     expression
-     *
-     * @return A new value expression formed from the input parameters
-     *
      * @throws NullPointerException
      *              If the expected type is <code>null</code>
      * @throws ELException
@@ -213,17 +229,6 @@ public abstract class ExpressionFactory {
             Class<?> expectedType);
 
     /**
-     * Create a new method expression instance.
-     *
-     * @param context            The EL context for this evaluation
-     * @param expression         The String representation of the method
-     *                           expression
-     * @param expectedReturnType The expected type of the result of invoking the
-     *                           method
-     * @param expectedParamTypes The expected types of the input parameters
-     *
-     * @return A new method expression formed from the input parameters.
-     *
      * @throws NullPointerException
      *              If the expected parameters types are <code>null</code>
      * @throws ELException
@@ -234,21 +239,12 @@ public abstract class ExpressionFactory {
             Class<?>[] expectedParamTypes);
 
     /**
-     * Coerce the supplied object to the requested type.
-     *
-     * @param obj          The object to be coerced
-     * @param expectedType The type to which the object should be coerced
-     *
-     * @return An instance of the requested type.
-     *
      * @throws ELException
      *              If the conversion fails
      */
     public abstract Object coerceToType(Object obj, Class<?> expectedType);
 
     /**
-     * @return This default implementation returns null
-     *
      * @since EL 3.0
      */
     public ELResolver getStreamELResolver() {
@@ -256,8 +252,6 @@ public abstract class ExpressionFactory {
     }
 
     /**
-     * @return This default implementation returns null
-     *
      * @since EL 3.0
      */
     public Map<String,Method> getInitFunctionMap() {
@@ -324,7 +318,7 @@ public abstract class ExpressionFactory {
         }
 
         public void setFactoryClass(Class<?> clazz) {
-            ref = new WeakReference<>(clazz);
+            ref = new WeakReference<Class<?>>(clazz);
         }
     }
 
@@ -388,8 +382,11 @@ public abstract class ExpressionFactory {
 
         if (is != null) {
             String line = null;
-            try (InputStreamReader isr = new InputStreamReader(is, "UTF-8");
-                    BufferedReader br = new BufferedReader(isr)) {
+            BufferedReader br = null;
+            InputStreamReader isr = null;
+            try {
+                isr = new InputStreamReader(is, "UTF-8");
+                br = new BufferedReader(isr);
                 line = br.readLine();
                 if (line != null && line.trim().length() > 0) {
                     return line.trim();
@@ -402,6 +399,16 @@ public abstract class ExpressionFactory {
                         e);
             } finally {
                 try {
+                    if (br != null) {
+                        br.close();
+                    }
+                } catch (IOException ioe) {/*Ignore*/}
+                try {
+                    if (isr != null) {
+                        isr.close();
+                    }
+                } catch (IOException ioe) {/*Ignore*/}
+                try {
                     is.close();
                 } catch (IOException ioe) {/*Ignore*/}
             }
@@ -413,7 +420,9 @@ public abstract class ExpressionFactory {
     private static String getClassNameJreDir() {
         File file = new File(PROPERTY_FILE);
         if (file.canRead()) {
-            try (InputStream is = new FileInputStream(file)){
+            InputStream is = null;
+            try {
+                is = new FileInputStream(file);
                 Properties props = new Properties();
                 props.load(is);
                 String value = props.getProperty(PROPERTY_NAME);
@@ -424,6 +433,14 @@ public abstract class ExpressionFactory {
                 // Should not happen - ignore it if it does
             } catch (IOException e) {
                 throw new ELException("Failed to read " + PROPERTY_FILE, e);
+            } finally {
+                if (is != null) {
+                    try {
+                        is.close();
+                    } catch (IOException e) {
+                        // Ignore
+                    }
+                }
             }
         }
         return null;

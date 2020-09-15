@@ -19,7 +19,6 @@ package javax.servlet.http;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Enumeration;
-import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequestWrapper;
@@ -38,8 +37,6 @@ public class HttpServletRequestWrapper extends ServletRequestWrapper implements
 
     /**
      * Constructs a request object wrapping the given request.
-     *
-     * @param request The request to wrap
      *
      * @throws java.lang.IllegalArgumentException
      *             if the request is null
@@ -113,15 +110,6 @@ public class HttpServletRequestWrapper extends ServletRequestWrapper implements
     @Override
     public int getIntHeader(String name) {
         return this._getHttpServletRequest().getIntHeader(name);
-    }
-
-    /**
-     * The default behavior of this method is to return getMapping() on the
-     * wrapped request object.
-     */
-    @Override
-    public HttpServletMapping getHttpServletMapping() {
-        return this._getHttpServletRequest().getHttpServletMapping();
     }
 
     /**
@@ -293,7 +281,8 @@ public class HttpServletRequestWrapper extends ServletRequestWrapper implements
      * @deprecated As of Version 3.0 of the Java Servlet API
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("dep-ann")
+    // Spec API does not use @Deprecated
     public boolean isRequestedSessionIdFromUrl() {
         return this._getHttpServletRequest().isRequestedSessionIdFromUrl();
     }
@@ -383,48 +372,5 @@ public class HttpServletRequestWrapper extends ServletRequestWrapper implements
     public <T extends HttpUpgradeHandler> T upgrade(
             Class<T> httpUpgradeHandlerClass) throws IOException, ServletException {
         return this._getHttpServletRequest().upgrade(httpUpgradeHandlerClass);
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The default behavior of this method is to return
-     * {@link HttpServletRequest#newPushBuilder()} on the wrapped request
-     * object.
-     *
-     * @since Servlet 4.0
-     */
-    @Override
-    public PushBuilder newPushBuilder() {
-        return this._getHttpServletRequest().newPushBuilder();
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The default behavior of this method is to return
-     * {@link HttpServletRequest#getTrailerFields()} on the wrapped request
-     * object.
-     *
-     * @since Servlet 4.0
-     */
-    @Override
-    public Map<String,String> getTrailerFields() {
-        return this._getHttpServletRequest().getTrailerFields();
-    }
-
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The default behavior of this method is to return
-     * {@link HttpServletRequest#isTrailerFieldsReady()} on the wrapped request
-     * object.
-     *
-     * @since Servlet 4.0
-     */
-    @Override
-    public boolean isTrailerFieldsReady() {
-        return this._getHttpServletRequest().isTrailerFieldsReady();
     }
 }

@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.junit.Assert;
+
 import org.junit.Test;
 
 import org.apache.catalina.Context;
@@ -40,8 +41,9 @@ public class TestWebappClassLoaderExecutorMemoryLeak extends TomcatBaseTest {
     public void testTimerThreadLeak() throws Exception {
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx = tomcat.addContext("",
+                System.getProperty("java.io.tmpdir"));
 
         if (ctx instanceof StandardContext) {
             ((StandardContext) ctx).setClearReferencesStopThreads(true);
@@ -49,7 +51,7 @@ public class TestWebappClassLoaderExecutorMemoryLeak extends TomcatBaseTest {
 
         ExecutorServlet executorServlet = new ExecutorServlet();
         Tomcat.addServlet(ctx, "taskServlet", executorServlet);
-        ctx.addServletMappingDecoded("/", "taskServlet");
+        ctx.addServletMapping("/", "taskServlet");
 
         tomcat.start();
 

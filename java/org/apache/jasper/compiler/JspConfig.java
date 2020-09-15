@@ -19,6 +19,7 @@ package org.apache.jasper.compiler;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Vector;
 
 import javax.servlet.ServletContext;
@@ -254,7 +255,10 @@ public class JspConfig {
         JspPropertyGroup bufferMatch = null;
         JspPropertyGroup errorOnUndeclaredNamespaceMatch = null;
 
-        for (JspPropertyGroup jpg : jspProperties) {
+        Iterator<JspPropertyGroup> iter = jspProperties.iterator();
+        while (iter.hasNext()) {
+
+            JspPropertyGroup jpg = iter.next();
             JspProperty jp = jpg.getJspProperty();
 
             // (arrays will be the same length)
@@ -335,7 +339,7 @@ public class JspConfig {
         String isTrimDirectiveWhitespaces = defaultTrimDirectiveWhitespaces;
         String defaultContentType = defaultDefaultContentType;
         String buffer = defaultBuffer;
-        String errorOnUndeclaredNamespace = defaultErrorOnUndeclaredNamespace;
+        String errorOnUndelcaredNamespace = defaultErrorOnUndeclaredNamespace;
 
         if (isXmlMatch != null) {
             isXml = isXmlMatch.getJspProperty().isXml();
@@ -366,21 +370,19 @@ public class JspConfig {
             buffer = bufferMatch.getJspProperty().getBuffer();
         }
         if (errorOnUndeclaredNamespaceMatch != null) {
-            errorOnUndeclaredNamespace =
+            errorOnUndelcaredNamespace =
                 errorOnUndeclaredNamespaceMatch.getJspProperty().isErrorOnUndeclaredNamespace();
         }
 
         return new JspProperty(isXml, isELIgnored, isScriptingInvalid,
                 pageEncoding, includePreludes, includeCodas,
                 isDeferedSyntaxAllowedAsLiteral, isTrimDirectiveWhitespaces,
-                defaultContentType, buffer, errorOnUndeclaredNamespace);
+                defaultContentType, buffer, errorOnUndelcaredNamespace);
     }
 
     /**
      * To find out if an uri matches an url pattern in jsp config.  If so,
      * then the uri is a JSP page.  This is used primarily for jspc.
-     * @param uri The path to check
-     * @return <code>true</code> if the path denotes a JSP page
      */
     public boolean isJspPage(String uri) {
 
@@ -400,7 +402,10 @@ public class JspConfig {
             uriExtension = uri.substring(index+1);
         }
 
-        for (JspPropertyGroup jpg : jspProperties) {
+        Iterator<JspPropertyGroup> iter = jspProperties.iterator();
+        while (iter.hasNext()) {
+
+            JspPropertyGroup jpg = iter.next();
 
             String extension = jpg.getExtension();
             String path = jpg.getPath();

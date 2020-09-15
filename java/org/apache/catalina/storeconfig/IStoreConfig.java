@@ -57,17 +57,22 @@ public interface IStoreConfig {
 
     /**
      * Store the current StoreFactory Server.
+     *
+     * @exception Exception
+     *                if an exception occurs while storing
      */
-    void storeConfig();
+    void storeConfig() throws Exception;
 
     /**
      * Store the specified Server properties.
      *
      * @param aServer
      *            Object to be stored
-     * @return <code>true</code> if the store operation was successful
+     *
+     * @exception Exception
+     *                if an exception occurs while storing
      */
-    boolean store(Server aServer);
+    void store(Server aServer) throws Exception;
 
     /**
      * Store the specified Server properties.
@@ -78,9 +83,8 @@ public interface IStoreConfig {
      *            Number of spaces to indent this element
      * @param aServer
      *            Object to be stored
-     * @throws Exception Store error occurred
      */
-    void store(PrintWriter aWriter, int indent, Server aServer) throws Exception;
+    void store(PrintWriter aWriter, int indent, Server aServer);
 
     /**
      * Store the specified Service properties.
@@ -91,9 +95,8 @@ public interface IStoreConfig {
      *            Number of spaces to indent this element
      * @param aService
      *            Object to be stored
-     * @throws Exception Store error occurred
      */
-    void store(PrintWriter aWriter, int indent, Service aService) throws Exception;
+    void store(PrintWriter aWriter, int indent, Service aService);
 
     /**
      * Store the specified Host properties.
@@ -104,18 +107,16 @@ public interface IStoreConfig {
      *            Number of spaces to indent this element
      * @param aHost
      *            Object to be stored
-     * @throws Exception Store error occurred
      */
-    void store(PrintWriter aWriter, int indent, Host aHost) throws Exception;
+    void store(PrintWriter aWriter, int indent, Host aHost);
 
     /**
      * Store the specified Context properties.
      *
      * @param aContext
      *            Object to be stored
-     * @return <code>true</code> if the store operation was successful
      */
-    boolean store(Context aContext);
+    void store(Context aContext);
 
     /**
      * Store the specified Context properties.
@@ -126,7 +127,6 @@ public interface IStoreConfig {
      *            Number of spaces to indent this element
      * @param aContext
      *            Object to be stored
-     * @throws Exception Store error occurred
      */
-    void store(PrintWriter aWriter, int indent, Context aContext) throws Exception;
+    void store(PrintWriter aWriter, int indent, Context aContext);
 }

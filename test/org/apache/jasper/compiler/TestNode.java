@@ -16,58 +16,34 @@
  */
 package org.apache.jasper.compiler;
 
-import java.util.List;
+import java.io.File;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.jasper.compiler.Node.PageDirective;
+import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.startup.TomcatBaseTest;
+import org.apache.tomcat.util.buf.ByteChunk;
 
-public class TestNode {
-
-    /*
-     * https://bz.apache.org/bugzilla/show_bug.cgi?id=57099
-     */
-    @Test(expected=IllegalArgumentException.class)
-    public void testPageDirectiveImport01() {
-        doTestPageDirectiveImport("java.io.*;\r\n\timport java.net.*");
-    }
+public class TestNode extends TomcatBaseTest {
 
     @Test
-    public void testPageDirectiveImport02() {
-        doTestPageDirectiveImport("a,b,c");
-    }
+    public void testJspAttributeIsLiteral() throws Exception {
+        Tomcat tomcat = getTomcatInstance();
 
-    @Test
-    public void testPageDirectiveImport03() {
-        doTestPageDirectiveImport(" a , b , c ");
-    }
+        File appDir =
+            new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "", appDir.getAbsolutePath());
 
-    @Test
-    public void testPageDirectiveImport04() {
-        doTestPageDirectiveImport(" a\n , \r\nb , \nc\r ");
-    }
+        tomcat.start();
 
-    @Test
-    public void testPageDirectiveImport05() {
-        doTestPageDirectiveImport("java.util.List,java.util.ArrayList,java.util.Set");
-    }
+        ByteChunk res = getUrl("http://localhost:" + getPort() +
+                "/bug5nnnn/bug55642a.jsp");
 
-    @Test(expected=IllegalArgumentException.class)
-    public void testPageDirectiveImport06() {
-        doTestPageDirectiveImport("java.util.List;import java.util.ArrayList; import java.util.Set");
-    }
+        String result = res.toString();
 
-    @Test
-    public void testPageDirectiveImport07() {
-        doTestPageDirectiveImport("java .\nutil.List,java.util.ArrayList,java.util.Set");
-    }
-
-    private void doTestPageDirectiveImport(String importDirective) {
-        PageDirective pd = new PageDirective(null, null, null);
-        pd.addImport(importDirective);
-        List<String> imports = pd.getImports();
-
-        Assert.assertEquals(3, imports.size());
+        Assert.assertTrue(
+                result.indexOf("/bug5nnnn/bug55642b.jsp?foo=bar&a=1&b=2") > 0);
     }
 }

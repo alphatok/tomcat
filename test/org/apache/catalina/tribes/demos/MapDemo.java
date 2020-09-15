@@ -131,6 +131,11 @@ public class MapDemo implements ChannelListener, MembershipListener{
                            ChannelCreator.usage());
     }
 
+    /**
+     * Main method
+     * @param args
+     * @throws Exception
+     */
     @SuppressWarnings("unused")
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
@@ -411,7 +416,7 @@ public class MapDemo implements ChannelListener, MembershipListener{
             dataModel.getValueAt(-1,-1);
         }
 
-        public static final Random random = new Random();
+        public static Random random = new Random();
         public static String random(int count, int start, int end, boolean letters, boolean numbers,
                                     char[] chars ) {
             if (count == 0) {
@@ -489,7 +494,7 @@ public class MapDemo implements ChannelListener, MembershipListener{
             System.out.println("--------------------------");
         }
 
-        /*
+        /**
          * Create the GUI and show it.  For thread safety,
          * this method should be invoked from the
          * event-dispatching thread.

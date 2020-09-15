@@ -27,9 +27,6 @@ import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.group.ChannelInterceptorBase;
 import org.apache.catalina.tribes.group.InterceptorPayload;
 import org.apache.catalina.tribes.io.XByteBuffer;
-import org.apache.catalina.tribes.util.StringManager;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 
 /**
  *
@@ -38,14 +35,13 @@ import org.apache.juli.logging.LogFactory;
  * and smaller messages can make it through.
  *
  * <br><b>Configuration Options</b><br>
- * OrderInterceptor.expire=&lt;milliseconds&gt; - how long do we keep the fragments in memory and wait for the rest to arrive<b>default=60,000ms -&gt; 60seconds</b>
+ * OrderInteceptor.expire=<milliseconds> - how long do we keep the fragments in memory and wait for the rest to arrive<b>default=60,000ms -> 60seconds</b>
  * This setting is useful to avoid OutOfMemoryErrors<br>
- * OrderInterceptor.maxSize=&lt;max message size&gt; - message size in bytes <b>default=1024*100 (around a tenth of a MB)</b><br>
+ * OrderInteceptor.maxSize=<max message size> - message size in bytes <b>default=1024*100 (around a tenth of a MB)</b><br>
  * @version 1.0
  */
 public class FragmentationInterceptor extends ChannelInterceptorBase {
-    private static final Log log = LogFactory.getLog(FragmentationInterceptor.class);
-    protected static final StringManager sm = StringManager.getManager(FragmentationInterceptor.class);
+    private static final org.apache.juli.logging.Log log = org.apache.juli.logging.LogFactory.getLog( FragmentationInterceptor.class );
 
     protected final HashMap<FragKey, FragCollection> fragpieces = new HashMap<>();
     private int maxSize = 1024*100;
@@ -151,7 +147,7 @@ public class FragmentationInterceptor extends ChannelInterceptorBase {
             }
         }catch ( Exception x ) {
             if ( log.isErrorEnabled() ) {
-                log.error(sm.getString("fragmentationInterceptor.heartbeat.failed"),x);
+                log.error("Unable to perform heartbeat clean up in the frag interceptor",x);
             }
         }
         super.heartbeat();
@@ -203,7 +199,7 @@ public class FragmentationInterceptor extends ChannelInterceptorBase {
         }
 
         public ChannelMessage assemble() {
-            if ( !complete() ) throw new IllegalStateException(sm.getString("fragmentationInterceptor.fragments.missing"));
+            if ( !complete() ) throw new IllegalStateException("Fragments are missing.");
             int buffersize = 0;
             for (int i=0; i<frags.length; i++ ) buffersize += frags[i].getLength();
             XByteBuffer buf = new XByteBuffer(buffersize,false);

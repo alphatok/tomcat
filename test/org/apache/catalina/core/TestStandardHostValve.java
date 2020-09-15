@@ -16,13 +16,10 @@
  */
 package org.apache.catalina.core;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequestEvent;
-import javax.servlet.ServletRequestListener;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -44,16 +41,17 @@ public class TestStandardHostValve extends TomcatBaseTest {
         // Set up a container
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        File docBase = new File(System.getProperty("java.io.tmpdir"));
+        Context ctx = tomcat.addContext("", docBase.getAbsolutePath());
 
         // Add the error page
         Tomcat.addServlet(ctx, "error", new ErrorServlet());
-        ctx.addServletMappingDecoded("/error", "error");
+        ctx.addServletMapping("/error", "error");
 
         // Add the error handling page
         Tomcat.addServlet(ctx, "report", new ReportServlet());
-        ctx.addServletMappingDecoded("/report/*", "report");
+        ctx.addServletMapping("/report/*", "report");
 
         // And the handling for 500 responses
         ErrorPage errorPage500 = new ErrorPage();
@@ -70,64 +68,6 @@ public class TestStandardHostValve extends TomcatBaseTest {
 
         doTestErrorPageHandling(500, "/500");
         doTestErrorPageHandling(501, "/default");
-    }
-
-
-    @Test(expected=IllegalArgumentException.class)
-    public void testInvalidErrorPage() throws Exception {
-        // Set up a container
-        Tomcat tomcat = getTomcatInstance();
-
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
-
-        // Add a broken error page configuration
-        ErrorPage errorPage500 = new ErrorPage();
-        errorPage500.setErrorCode("java.lang.Exception");
-        errorPage500.setLocation("/report/500");
-        ctx.addErrorPage(errorPage500);
-    }
-
-
-    @Test
-    public void testSRLAfterError() throws Exception {
-        // Set up a container
-        Tomcat tomcat = getTomcatInstance();
-
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
-
-        // Add the error page
-        Tomcat.addServlet(ctx, "error", new ErrorServlet());
-        ctx.addServletMappingDecoded("/error", "error");
-
-        final List<String> result = new ArrayList<>();
-
-        // Add the request listener
-        ServletRequestListener servletRequestListener = new ServletRequestListener() {
-
-            @Override
-            public void requestDestroyed(ServletRequestEvent sre) {
-                result.add("Visit requestDestroyed");
-            }
-
-            @Override
-            public void requestInitialized(ServletRequestEvent sre) {
-                result.add("Visit requestInitialized");
-            }
-
-        };
-        ((StandardContext) ctx).addApplicationEventListener(servletRequestListener);
-
-        tomcat.start();
-
-        // Request a page that triggers an error
-        ByteChunk bc = new ByteChunk();
-        int rc = getUrl("http://localhost:" + getPort() + "/error?errorCode=400", bc, null);
-
-        Assert.assertEquals(400, rc);
-        Assert.assertTrue(result.contains("Visit requestInitialized"));
-        Assert.assertTrue(result.contains("Visit requestDestroyed"));
     }
 
     private void doTestErrorPageHandling(int error, String report)
@@ -149,7 +89,8 @@ public class TestStandardHostValve extends TomcatBaseTest {
         @Override
         protected void doGet(HttpServletRequest req, HttpServletResponse resp)
                 throws ServletException, IOException {
-            int error = Integer.parseInt(req.getParameter("errorCode"));
+            int error =
+                    Integer.valueOf(req.getParameter("errorCode")).intValue();
             resp.sendError(error);
         }
     }

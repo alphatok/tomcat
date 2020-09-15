@@ -27,6 +27,7 @@ import org.apache.catalina.tribes.group.GroupChannel;
 import org.apache.catalina.tribes.group.interceptors.DomainFilterInterceptor;
 import org.apache.catalina.tribes.group.interceptors.FragmentationInterceptor;
 import org.apache.catalina.tribes.group.interceptors.GzipInterceptor;
+import org.apache.catalina.tribes.group.interceptors.MessageDispatch15Interceptor;
 import org.apache.catalina.tribes.group.interceptors.MessageDispatchInterceptor;
 import org.apache.catalina.tribes.group.interceptors.OrderInterceptor;
 import org.apache.catalina.tribes.group.interceptors.StaticMembershipInterceptor;
@@ -129,7 +130,7 @@ public class ChannelCreator {
                 System.out.println("Setting MessageDispatchInterceptor.maxQueueSize="+asyncsize);
             } else if ("-static".equals(args[i])) {
                 String d = args[++i];
-                String h = d.substring(0,d.indexOf(':'));
+                String h = d.substring(0,d.indexOf(":"));
                 String p = d.substring(h.length()+1);
                 Member m = new MemberImpl(h,Integer.parseInt(p),2000);
                 staticMembers.add(m);
@@ -224,7 +225,7 @@ public class ChannelCreator {
         }
 
         if ( async ) {
-            MessageDispatchInterceptor mi = new MessageDispatchInterceptor();
+            MessageDispatchInterceptor mi = new MessageDispatch15Interceptor();
             mi.setMaxQueueSize(asyncsize);
             channel.addInterceptor(mi);
             System.out.println("Added MessageDispatchInterceptor");
@@ -244,7 +245,7 @@ public class ChannelCreator {
 
 
         byte[] domain = new byte[] {1,2,3,4,5,6,7,8,9,0};
-        channel.getMembershipService().setDomain(domain);
+        ((McastService)channel.getMembershipService()).setDomain(domain);
         DomainFilterInterceptor filter = new DomainFilterInterceptor();
         filter.setDomain(domain);
         channel.addInterceptor(filter);

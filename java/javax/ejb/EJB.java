@@ -33,5 +33,4 @@ public @interface EJB {
    Class beanInterface() default java.lang.Object.class;
    String beanName() default "";
    String mappedName() default "";
-   String lookup() default "";
 }

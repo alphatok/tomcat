@@ -51,13 +51,7 @@ public class MultipartConfigElement {
         }
         this.maxFileSize = maxFileSize;
         this.maxRequestSize = maxRequestSize;
-        // Avoid threshold values of less than zero as they cause trigger NPEs
-        // in the Commons FileUpload port for fields that have no data.
-        if (fileSizeThreshold > 0) {
-            this.fileSizeThreshold = fileSizeThreshold;
-        } else {
-            this.fileSizeThreshold = 0;
-        }
+        this.fileSizeThreshold = fileSizeThreshold;
     }
 
     public MultipartConfigElement(MultipartConfig annotation) {

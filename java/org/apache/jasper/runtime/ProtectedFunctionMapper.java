@@ -18,9 +18,15 @@
 package org.apache.jasper.runtime;
 
 import java.lang.reflect.Method;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 
 import javax.servlet.jsp.el.FunctionMapper;
+
+import org.apache.jasper.security.SecurityUtil;
 
 /**
  * Maps EL functions to their Java method counterparts. Keeps the actual Method
@@ -51,12 +57,25 @@ public final class ProtectedFunctionMapper extends javax.el.FunctionMapper
 
     /**
      * Generated Servlet and Tag Handler implementations call this method to
-     * retrieve an instance of the ProtectedFunctionMapper.
+     * retrieve an instance of the ProtectedFunctionMapper. This is necessary
+     * since generated code does not have access to create instances of classes
+     * in this package.
      *
      * @return A new protected function mapper.
      */
     public static ProtectedFunctionMapper getInstance() {
-        ProtectedFunctionMapper funcMapper = new ProtectedFunctionMapper();
+        ProtectedFunctionMapper funcMapper;
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            funcMapper = AccessController.doPrivileged(
+                    new PrivilegedAction<ProtectedFunctionMapper>() {
+                        @Override
+                        public ProtectedFunctionMapper run() {
+                            return new ProtectedFunctionMapper();
+                        }
+                    });
+        } else {
+            funcMapper = new ProtectedFunctionMapper();
+        }
         funcMapper.fnmap = new HashMap<>();
         return funcMapper;
     }
@@ -78,19 +97,29 @@ public final class ProtectedFunctionMapper extends javax.el.FunctionMapper
      */
     public void mapFunction(String fnQName, final Class<?> c,
             final String methodName, final Class<?>[] args) {
-        // Skip if null values were passed in. They indicate a function
-        // added via a lambda or ImportHandler; nether of which need to be
-        // placed in the Map.
-        if (fnQName == null) {
-            return;
-        }
         java.lang.reflect.Method method;
-        try {
-            method = c.getMethod(methodName, args);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(
-                    "Invalid function mapping - no such method: "
-                            + e.getMessage());
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            try {
+                method = AccessController.doPrivileged(
+                        new PrivilegedExceptionAction<Method>() {
+                            @Override
+                            public Method run() throws Exception {
+                                return c.getDeclaredMethod(methodName, args);
+                            }
+                        });
+            } catch (PrivilegedActionException ex) {
+                throw new RuntimeException(
+                        "Invalid function mapping - no such method: "
+                                + ex.getException().getMessage());
+            }
+        } else {
+            try {
+                method = c.getDeclaredMethod(methodName, args);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(
+                        "Invalid function mapping - no such method: "
+                                + e.getMessage());
+            }
         }
 
         this.fnmap.put(fnQName, method);
@@ -111,18 +140,37 @@ public final class ProtectedFunctionMapper extends javax.el.FunctionMapper
      *            The arguments of the Java method
      * @throws RuntimeException
      *             if no method with the given signature could be found.
-     * @return the mapped function
      */
     public static ProtectedFunctionMapper getMapForFunction(String fnQName,
             final Class<?> c, final String methodName, final Class<?>[] args) {
-        java.lang.reflect.Method method = null;
-        ProtectedFunctionMapper funcMapper = new ProtectedFunctionMapper();
-        // Skip if null values were passed in. They indicate a function
-        // added via a lambda or ImportHandler; nether of which need to be
-        // placed in the Map.
-        if (fnQName != null) {
+        java.lang.reflect.Method method;
+        ProtectedFunctionMapper funcMapper;
+        if (SecurityUtil.isPackageProtectionEnabled()) {
+            funcMapper = AccessController.doPrivileged(
+                    new PrivilegedAction<ProtectedFunctionMapper>() {
+                        @Override
+                        public ProtectedFunctionMapper run() {
+                            return new ProtectedFunctionMapper();
+                        }
+                    });
+
             try {
-                method = c.getMethod(methodName, args);
+                method = AccessController.doPrivileged(
+                        new PrivilegedExceptionAction<Method>() {
+                            @Override
+                            public Method run() throws Exception {
+                                return c.getDeclaredMethod(methodName, args);
+                            }
+                        });
+            } catch (PrivilegedActionException ex) {
+                throw new RuntimeException(
+                        "Invalid function mapping - no such method: "
+                                + ex.getException().getMessage());
+            }
+        } else {
+            funcMapper = new ProtectedFunctionMapper();
+            try {
+                method = c.getDeclaredMethod(methodName, args);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(
                         "Invalid function mapping - no such method: "
@@ -144,6 +192,7 @@ public final class ProtectedFunctionMapper extends javax.el.FunctionMapper
      * @return the result of the method mapping. Null means no entry found.
      */
     @Override
+    @Deprecated
     public Method resolveFunction(String prefix, String localName) {
         if (this.fnmap != null) {
             return this.fnmap.get(prefix + ":" + localName);

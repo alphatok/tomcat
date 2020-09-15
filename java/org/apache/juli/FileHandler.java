@@ -76,7 +76,9 @@ import java.util.logging.LogRecord;
  *    <code>java.util.logging.SimpleFormatter</code></li>
  * </ul>
  */
-public class FileHandler extends Handler {
+public class FileHandler
+    extends Handler {
+
 
     // ------------------------------------------------------------ Constructor
 
@@ -164,16 +166,18 @@ public class FileHandler extends Handler {
 
         // Construct the timestamp we will use, if requested
         Timestamp ts = new Timestamp(System.currentTimeMillis());
-        String tsDate = ts.toString().substring(0, 10);
+        String tsString = ts.toString().substring(0, 19);
+        String tsDate = tsString.substring(0, 10);
 
-        writerLock.readLock().lock();
         try {
+            writerLock.readLock().lock();
             // If the date has changed, switch log files
             if (rotatable && !date.equals(tsDate)) {
-                // Upgrade to writeLock before we switch
-                writerLock.readLock().unlock();
-                writerLock.writeLock().lock();
                 try {
+                    // Update to writeLock before we switch
+                    writerLock.readLock().unlock();
+                    writerLock.writeLock().lock();
+
                     // Make sure another thread hasn't already done this
                     if (!date.equals(tsDate)) {
                         closeWriter();
@@ -181,10 +185,10 @@ public class FileHandler extends Handler {
                         openWriter();
                     }
                 } finally {
-                    // Downgrade to read-lock. This ensures the writer remains valid
+                    writerLock.writeLock().unlock();
+                    // Down grade to read-lock. This ensures the writer remains valid
                     // until the log message is written
                     writerLock.readLock().lock();
-                    writerLock.writeLock().unlock();
                 }
             }
 
@@ -197,17 +201,17 @@ public class FileHandler extends Handler {
             }
 
             try {
-                if (writer != null) {
+                if (writer!=null) {
                     writer.write(result);
                     if (bufferSize < 0) {
                         writer.flush();
                     }
                 } else {
-                    reportError("FileHandler is closed or not yet initialized, unable to log ["
-                            + result + "]", null, ErrorManager.WRITE_FAILURE);
+                    reportError("FileHandler is closed or not yet initialized, unable to log ["+result+"]", null, ErrorManager.WRITE_FAILURE);
                 }
             } catch (Exception e) {
                 reportError(null, e, ErrorManager.WRITE_FAILURE);
+                return;
             }
         } finally {
             writerLock.readLock().unlock();
@@ -230,9 +234,8 @@ public class FileHandler extends Handler {
 
         writerLock.writeLock().lock();
         try {
-            if (writer == null) {
+            if (writer == null)
                 return;
-            }
             writer.write(getFormatter().getTail(this));
             writer.flush();
             writer.close();
@@ -254,9 +257,8 @@ public class FileHandler extends Handler {
 
         writerLock.readLock().lock();
         try {
-            if (writer == null) {
+            if (writer == null)
                 return;
-            }
             writer.flush();
         } catch (Exception e) {
             reportError(null, e, ErrorManager.FLUSH_FAILURE);
@@ -282,15 +284,12 @@ public class FileHandler extends Handler {
 
         // Retrieve configuration of logging file name
         rotatable = Boolean.parseBoolean(getProperty(className + ".rotatable", "true"));
-        if (directory == null) {
+        if (directory == null)
             directory = getProperty(className + ".directory", "logs");
-        }
-        if (prefix == null) {
+        if (prefix == null)
             prefix = getProperty(className + ".prefix", "juli.");
-        }
-        if (suffix == null) {
+        if (suffix == null)
             suffix = getProperty(className + ".suffix", ".log");
-        }
         String sBufferSize = getProperty(className + ".bufferSize", String.valueOf(bufferSize));
         try {
             bufferSize = Integer.parseInt(sBufferSize);
@@ -362,7 +361,8 @@ public class FileHandler extends Handler {
         // Create the directory if necessary
         File dir = new File(directory);
         if (!dir.mkdirs() && !dir.isDirectory()) {
-            reportError("Unable to create [" + dir + "]", null, ErrorManager.OPEN_FAILURE);
+            reportError("Unable to create [" + dir + "]", null,
+                    ErrorManager.OPEN_FAILURE);
             writer = null;
             return;
         }
@@ -376,13 +376,14 @@ public class FileHandler extends Handler {
                     + (rotatable ? date : "") + suffix);
             File parent = pathname.getParentFile();
             if (!parent.mkdirs() && !parent.isDirectory()) {
-                reportError("Unable to create [" + parent + "]", null, ErrorManager.OPEN_FAILURE);
+                reportError("Unable to create [" + parent + "]", null,
+                        ErrorManager.OPEN_FAILURE);
                 writer = null;
                 return;
             }
             String encoding = getEncoding();
             fos = new FileOutputStream(pathname, true);
-            os = bufferSize > 0 ? new BufferedOutputStream(fos, bufferSize) : fos;
+            os = bufferSize>0?new BufferedOutputStream(fos,bufferSize):fos;
             writer = new PrintWriter(
                     (encoding != null) ? new OutputStreamWriter(os, encoding)
                                        : new OutputStreamWriter(os), false);
@@ -407,5 +408,8 @@ public class FileHandler extends Handler {
         } finally {
             writerLock.writeLock().unlock();
         }
+
     }
+
+
 }

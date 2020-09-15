@@ -77,8 +77,6 @@ public class ContextRuleSet extends RuleSetBase {
      *
      * @param prefix Prefix for matching pattern rules (including the
      *  trailing slash character)
-     * @param create <code>true</code> if the main context instance should be
-     *  created
      */
     public ContextRuleSet(String prefix, boolean create) {
         this.namespaceURI = null;
@@ -119,6 +117,8 @@ public class ContextRuleSet extends RuleSetBase {
                                 "addChild",
                                 "org.apache.catalina.Container");
         }
+        digester.addCallMethod(prefix + "Context/InstanceListener",
+                               "addInstanceListener", 0);
 
         digester.addObjectCreate(prefix + "Context/Listener",
                                  null, // MUST be specified in the element
@@ -151,14 +151,6 @@ public class ContextRuleSet extends RuleSetBase {
         digester.addSetNext(prefix + "Context/Manager/Store",
                             "setStore",
                             "org.apache.catalina.Store");
-
-        digester.addObjectCreate(prefix + "Context/Manager/SessionIdGenerator",
-                                 "org.apache.catalina.util.StandardSessionIdGenerator",
-                                 "className");
-        digester.addSetProperties(prefix + "Context/Manager/SessionIdGenerator");
-        digester.addSetNext(prefix + "Context/Manager/SessionIdGenerator",
-                            "setSessionIdGenerator",
-                            "org.apache.catalina.SessionIdGenerator");
 
         digester.addObjectCreate(prefix + "Context/Parameter",
                                  "org.apache.tomcat.util.descriptor.web.ApplicationParameter");
@@ -242,13 +234,6 @@ public class ContextRuleSet extends RuleSetBase {
                             "setJarScanFilter",
                             "org.apache.tomcat.JarScanFilter");
 
-        digester.addObjectCreate(prefix + "Context/CookieProcessor",
-                                 "org.apache.tomcat.util.http.Rfc6265CookieProcessor",
-                                 "className");
-        digester.addSetProperties(prefix + "Context/CookieProcessor");
-        digester.addSetNext(prefix + "Context/CookieProcessor",
-                            "setCookieProcessor",
-                            "org.apache.tomcat.util.http.CookieProcessor");
     }
 
 }

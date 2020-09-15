@@ -42,10 +42,10 @@ public class TestVirtualWebappLoader extends TomcatBaseTest {
     @Test
     public void testStartInternal() throws Exception {
         Tomcat tomcat = getTomcatInstance();
-
         File appDir = new File("test/webapp");
-        StandardContext ctx = (StandardContext) tomcat.addContext("",
-                appDir.getAbsolutePath());
+        // Must have a real docBase - just use temp
+        StandardContext ctx =
+            (StandardContext)tomcat.addContext("",  appDir.getAbsolutePath());
 
 
         WebappLoader loader = new WebappLoader();

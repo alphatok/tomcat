@@ -27,12 +27,11 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.jasper.JasperException;
 import org.apache.jasper.JspCompilationContext;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 
 /**
  * Contains static utilities for generating SMAP data based on the
@@ -61,7 +60,6 @@ public class SmapUtil {
      * @param ctxt Current compilation context
      * @param pageNodes The current JSP page
      * @return a SMAP for the page
-     * @throws IOException Error writing SMAP
      */
     public static String[] generateSmap(
         JspCompilationContext ctxt,
@@ -79,15 +77,31 @@ public class SmapUtil {
         // set up our SMAP generator
         SmapGenerator g = new SmapGenerator();
 
+        /** Disable reading of input SMAP because:
+            1. There is a bug here: getRealPath() is null if .jsp is in a jar
+               Bugzilla 14660.
+            2. Mappings from other sources into .jsp files are not supported.
+            TODO: fix 1. if 2. is not true.
+        // determine if we have an input SMAP
+        String smapPath = inputSmapPath(ctxt.getRealPath(ctxt.getJspFile()));
+            File inputSmap = new File(smapPath);
+            if (inputSmap.exists()) {
+                byte[] embeddedSmap = null;
+            byte[] subSmap = SDEInstaller.readWhole(inputSmap);
+            String subSmapString = new String(subSmap, SMAP_ENCODING);
+            g.addSmap(subSmapString, "JSP");
+        }
+        **/
+
         // now, assemble info about our own stratum (JSP) using JspLineMap
-        SmapStratum s = new SmapStratum();
+        SmapStratum s = new SmapStratum("JSP");
 
         g.setOutputFileName(unqualify(ctxt.getServletJavaFileName()));
 
         // Map out Node.Nodes
         evaluateNodes(pageNodes, s, map, ctxt.getOptions().getMappedFile());
         s.optimizeLineSection();
-        g.setStratum(s);
+        g.addStratum(s, true);
 
         if (ctxt.getOptions().isSmapDumped()) {
             File outSmap = new File(ctxt.getClassFileName() + ".smap");
@@ -107,13 +121,15 @@ public class SmapUtil {
         smapInfo[1] = g.getString();
 
         int count = 2;
-        for (Map.Entry<String, SmapStratum> entry : map.entrySet()) {
+        Iterator<Map.Entry<String,SmapStratum>> iter = map.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<String,SmapStratum> entry = iter.next();
             String innerClass = entry.getKey();
             s = entry.getValue();
             s.optimizeLineSection();
             g = new SmapGenerator();
             g.setOutputFileName(unqualify(ctxt.getServletJavaFileName()));
-            g.setStratum(s);
+            g.addStratum(s, true);
 
             String innerClassFileName =
                 classFileName.substring(0, classFileName.indexOf(".class")) +
@@ -164,7 +180,8 @@ public class SmapUtil {
     // Installation logic (from Robert Field, JSR-045 spec lead)
     private static class SDEInstaller {
 
-        private final Log log = LogFactory.getLog(SDEInstaller.class);
+        private final org.apache.juli.logging.Log log=
+            org.apache.juli.logging.LogFactory.getLog( SDEInstaller.class );
 
         static final String nameSDE = "SourceDebugExtension";
 
@@ -206,9 +223,9 @@ public class SmapUtil {
             addSDE();
 
             // write result
-            try (FileOutputStream outStream = new FileOutputStream(outClassFile)) {
-                outStream.write(gen, 0, genPos);
-            }
+            FileOutputStream outStream = new FileOutputStream(outClassFile);
+            outStream.write(gen, 0, genPos);
+            outStream.close();
         }
 
         static byte[] readWhole(File input) throws IOException {
@@ -236,7 +253,7 @@ public class SmapUtil {
                 // if "SourceDebugExtension" symbol not there add it
                 writeUtf8ForSDE();
 
-                // increment the constantPoolCount
+                // increment the countantPoolCount
                 sdeIndex = constantPoolCount;
                 ++constantPoolCount;
                 randomAccessWriteU2(constantPoolCountPos, constantPoolCount);
@@ -378,25 +395,18 @@ public class SmapUtil {
                 int tag = readU1();
                 writeU1(tag);
                 switch (tag) {
-                    case 7 :  // Class
-                    case 8 :  // String
-                    case 16 : // MethodType
+                    case 7 : // Class
+                    case 8 : // String
                         if (log.isDebugEnabled())
                             log.debug(i + " copying 2 bytes");
                         copy(2);
                         break;
-                    case 15 : // MethodHandle
-                        if (log.isDebugEnabled())
-                            log.debug(i + " copying 3 bytes");
-                        copy(3);
-                        break;
-                    case 9 :  // Field
+                    case 9 : // Field
                     case 10 : // Method
                     case 11 : // InterfaceMethod
-                    case 3 :  // Integer
-                    case 4 :  // Float
+                    case 3 : // Integer
+                    case 4 : // Float
                     case 12 : // NameAndType
-                    case 18 : // InvokeDynamic
                         if (log.isDebugEnabled())
                             log.debug(i + " copying 4 bytes");
                         copy(4);
@@ -683,7 +693,7 @@ public class SmapUtil {
         public void doVisit(Node n) {
             String inner = n.getInnerClassName();
             if (inner != null && !map.containsKey(inner)) {
-                map.put(inner, new SmapStratum());
+                map.put(inner, new SmapStratum("JSP"));
             }
         }
 

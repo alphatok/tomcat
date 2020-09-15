@@ -30,9 +30,9 @@ public class SendMessageData {
 
 
     /**
-     * @param message The message to send
-     * @param destination Member destination
-     * @param exception Associated error
+     * @param message
+     * @param destination
+     * @param exception
      */
     public SendMessageData(Object message, Member destination,
             Exception exception) {
@@ -43,19 +43,19 @@ public class SendMessageData {
     }
 
     /**
-     * @return the destination.
+     * @return Returns the destination.
      */
     public Member getDestination() {
         return destination;
     }
     /**
-     * @return the exception.
+     * @return Returns the exception.
      */
     public Exception getException() {
         return exception;
     }
     /**
-     * @return the message.
+     * @return Returns the message.
      */
     public Object getMessage() {
         return message;

@@ -17,9 +17,7 @@
 package org.apache.tomcat.jdbc.pool.interceptor;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
@@ -48,7 +46,7 @@ public class SlowQueryReport extends AbstractQueryReport  {
     /**
      * we will be keeping track of query stats on a per pool basis
      */
-    protected static final ConcurrentHashMap<String,ConcurrentHashMap<String,QueryStats>> perPoolStats =
+    protected static ConcurrentHashMap<String,ConcurrentHashMap<String,QueryStats>> perPoolStats =
         new ConcurrentHashMap<>();
     /**
      * the queries that are used for this interceptor.
@@ -58,21 +56,6 @@ public class SlowQueryReport extends AbstractQueryReport  {
      * Maximum number of queries we will be storing
      */
     protected int  maxQueries= 1000; //don't store more than this amount of queries
-
-    /**
-     * Flag to enable disable logging of slow queries
-     */
-    protected boolean logSlow = true;
-
-    /**
-     * Flag to enable disable logging of failed queries
-     */
-    protected boolean logFailed = false;
-
-    /**
-     * Sort QueryStats by last invocation time
-     */
-    protected final Comparator<QueryStats> queryStatsComparator = new QueryStatsComparator();
 
     /**
      * Returns the query stats for a given pool
@@ -102,22 +85,10 @@ public class SlowQueryReport extends AbstractQueryReport  {
             long now = System.currentTimeMillis();
             long delta = now - start;
             QueryStats qs = this.getQueryStats(sql);
-            if (qs != null) {
-                qs.failure(delta, now);
-                if (isLogFailed() && log.isWarnEnabled()) {
-                    log.warn("Failed Query Report SQL="+sql+"; time="+delta+" ms;");
-                }
+            qs.failure(delta, now);
+            if (log.isWarnEnabled()) {
+                log.warn("Failed Query Report SQL="+sql+"; time="+delta+" ms;");
             }
-        }
-        return sql;
-    }
-
-    @Override
-    protected String reportQuery(String query, Object[] args, final String name, long start, long delta) {
-        String sql = super.reportQuery(query, args, name, start, delta);
-        if (this.maxQueries > 0 ) {
-            QueryStats qs = this.getQueryStats(sql);
-            if (qs != null) qs.add(delta, start);
         }
         return sql;
     }
@@ -127,11 +98,9 @@ public class SlowQueryReport extends AbstractQueryReport  {
         String sql = super.reportSlowQuery(query, args, name, start, delta);
         if (this.maxQueries > 0 ) {
             QueryStats qs = this.getQueryStats(sql);
-            if (qs != null) {
-                qs.add(delta, start);
-                if (isLogSlow() && log.isWarnEnabled()) {
-                    log.warn("Slow Query Report SQL="+sql+"; time="+delta+" ms;");
-                }
+            qs.add(delta, start);
+            if (log.isWarnEnabled()) {
+                log.warn("Slow Query Report SQL="+sql+"; time="+delta+" ms;");
             }
         }
         return sql;
@@ -148,18 +117,14 @@ public class SlowQueryReport extends AbstractQueryReport  {
 
     @Override
     public void prepareStatement(String sql, long time) {
-        if (this.maxQueries > 0 ) {
-            QueryStats qs = getQueryStats(sql);
-            if (qs != null) qs.prepare(time);
-        }
+        QueryStats qs = getQueryStats(sql);
+        qs.prepare(time);
     }
 
     @Override
     public void prepareCall(String sql, long time) {
-        if (this.maxQueries > 0 ) {
-            QueryStats qs = getQueryStats(sql);
-            if (qs != null) qs.prepare(time);
-        }
+        QueryStats qs = getQueryStats(sql);
+        qs.prepare(time);
     }
 
     /**
@@ -194,10 +159,7 @@ public class SlowQueryReport extends AbstractQueryReport  {
     protected QueryStats getQueryStats(String sql) {
         if (sql==null) sql = "";
         ConcurrentHashMap<String,QueryStats> queries = SlowQueryReport.this.queries;
-        if (queries==null) {
-            if (log.isWarnEnabled()) log.warn("Connection has already been closed or abandoned");
-            return null;
-        }
+        if (queries==null) return null;
         QueryStats qs = queries.get(sql);
         if (qs == null) {
             qs = new QueryStats(sql);
@@ -214,18 +176,15 @@ public class SlowQueryReport extends AbstractQueryReport  {
     }
 
     /**
-     * Sort QueryStats by last invocation time
-     * @param queries The queries map
+     * TODO - implement a better algorithm
+     * @param queries
      */
     protected void removeOldest(ConcurrentHashMap<String,QueryStats> queries) {
-        ArrayList<QueryStats> list = new ArrayList<>(queries.values());
-        Collections.sort(list, queryStatsComparator);
-        int removeIndex = 0;
-        while (queries.size() > maxQueries) {
-            String sql = list.get(removeIndex).getQuery();
-            queries.remove(sql);
+        Iterator<String> it = queries.keySet().iterator();
+        while (queries.size()>maxQueries && it.hasNext()) {
+            String sql = it.next();
+            it.remove();
             if (log.isDebugEnabled()) log.debug("Removing slow query, capacity reached:"+sql);
-            removeIndex++;
         }
     }
 
@@ -240,44 +199,18 @@ public class SlowQueryReport extends AbstractQueryReport  {
     }
 
 
-    public boolean isLogSlow() {
-        return logSlow;
-    }
-
-    public void setLogSlow(boolean logSlow) {
-        this.logSlow = logSlow;
-    }
-
-    public boolean isLogFailed() {
-        return logFailed;
-    }
-
-    public void setLogFailed(boolean logFailed) {
-        this.logFailed = logFailed;
-    }
-
     @Override
     public void setProperties(Map<String, InterceptorProperty> properties) {
         super.setProperties(properties);
         final String threshold = "threshold";
         final String maxqueries= "maxQueries";
-        final String logslow = "logSlow";
-        final String logfailed = "logFailed";
         InterceptorProperty p1 = properties.get(threshold);
         InterceptorProperty p2 = properties.get(maxqueries);
-        InterceptorProperty p3 = properties.get(logslow);
-        InterceptorProperty p4 = properties.get(logfailed);
         if (p1!=null) {
             setThreshold(Long.parseLong(p1.getValue()));
         }
         if (p2!=null) {
             setMaxQueries(Integer.parseInt(p2.getValue()));
-        }
-        if (p3!=null) {
-            setLogSlow(Boolean.parseBoolean(p3.getValue()));
-        }
-        if (p4!=null) {
-            setLogFailed(Boolean.parseBoolean(p4.getValue()));
         }
     }
 
@@ -475,22 +408,5 @@ public class SlowQueryReport extends AbstractQueryReport  {
         }
     }
 
-    /** Compare QueryStats by their lastInvocation value. QueryStats that
-     * have never been updated, have a lastInvocation value of {@code 0}
-     * which should be handled as the newest possible invocation.
-     */
-    private static class QueryStatsComparator implements Comparator<QueryStats> {
-
-        @Override
-        public int compare(QueryStats stats1, QueryStats stats2) {
-            return Long.compare(handleZero(stats1.lastInvocation),
-                    handleZero(stats2.lastInvocation));
-        }
-
-        private static long handleZero(long value) {
-            return value == 0 ? Long.MAX_VALUE : value;
-        }
-
-    }
 
 }

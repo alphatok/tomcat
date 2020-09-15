@@ -31,8 +31,14 @@ import org.w3c.dom.NodeList;
  */
 public class DOMWriter {
 
-    private final PrintWriter out;
-    private final boolean canonical;
+    /** Default Encoding */
+    private static final String PRINTWRITER_ENCODING = "UTF8";
+
+    /** Print writer. */
+    protected final PrintWriter out;
+
+    /** Canonical output. */
+    protected final boolean canonical;
 
 
     public DOMWriter(Writer writer, boolean canonical) {
@@ -41,10 +47,12 @@ public class DOMWriter {
     }
 
 
-    /**
-     * Prints the specified node, recursively.
-     * @param node The node to output
-     */
+    public static String getWriterEncoding() {
+        return (PRINTWRITER_ENCODING);
+    }
+
+
+    /** Prints the specified node, recursively. */
     public void print(Node node) {
 
         // is there anything to do?
@@ -57,7 +65,16 @@ public class DOMWriter {
             // print document
             case Node.DOCUMENT_NODE:
                 if (!canonical) {
-                    out.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                    String Encoding = getWriterEncoding();
+                    if (Encoding.equalsIgnoreCase("DEFAULT"))
+                        Encoding = "UTF-8";
+                    else if (Encoding.equalsIgnoreCase("Unicode"))
+                        Encoding = "UTF-16";
+                    else
+                        Encoding = MIME2Java.reverse(Encoding);
+
+                    out.println("<?xml version=\"1.0\" encoding=\"" + Encoding +
+                            "\"?>");
                 }
                 print(((Document) node).getDocumentElement());
                 out.flush();
@@ -74,7 +91,7 @@ public class DOMWriter {
                     out.print(attr.getLocalName());
 
                     out.print("=\"");
-                    out.print(escape(attr.getNodeValue()));
+                    out.print(normalize(attr.getNodeValue()));
                     out.print('"');
                 }
                 out.print('>');
@@ -95,7 +112,7 @@ public class DOMWriter {
             // print cdata sections
             case Node.CDATA_SECTION_NODE:
                 if (canonical) {
-                    out.print(escape(node.getNodeValue()));
+                    out.print(normalize(node.getNodeValue()));
                 } else {
                     out.print("<![CDATA[");
                     out.print(node.getNodeValue());
@@ -105,7 +122,7 @@ public class DOMWriter {
 
             // print text
             case Node.TEXT_NODE:
-                out.print(escape(node.getNodeValue()));
+                out.print(normalize(node.getNodeValue()));
                 break;
 
             // print processing instruction
@@ -144,12 +161,8 @@ public class DOMWriter {
     }
 
 
-    /**
-     * Returns a sorted list of attributes.
-     * @param attrs The map to sort
-     * @return a sorted attribute array
-     */
-    private Attr[] sortAttributes(NamedNodeMap attrs) {
+    /** Returns a sorted list of attributes. */
+    protected Attr[] sortAttributes(NamedNodeMap attrs) {
         if (attrs == null) {
             return new Attr[0];
         }
@@ -178,15 +191,12 @@ public class DOMWriter {
             }
         }
 
-        return array;
+        return (array);
+
     }
 
-    /**
-     * Normalizes the given string.
-     * @param s The string to escape
-     * @return the escaped string
-     */
-    private String escape(String s) {
+    /** Normalizes the given string. */
+    protected String normalize(String s) {
         if (s == null) {
             return "";
         }
@@ -224,6 +234,6 @@ public class DOMWriter {
             }
         }
 
-        return str.toString();
+        return (str.toString());
     }
 }

@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.apache.naming;
 
 import java.util.Hashtable;
@@ -25,35 +27,34 @@ import java.util.Hashtable;
  */
 public class ContextAccessController {
 
+
     // -------------------------------------------------------------- Variables
+
 
     /**
      * Catalina context names on which writing is not allowed.
      */
-    private static final Hashtable<Object,Object> readOnlyContexts = new Hashtable<>();
+    private static final Hashtable<Object,Object> readOnlyContexts =
+            new Hashtable<>();
 
 
     /**
      * Security tokens repository.
      */
-    private static final Hashtable<Object,Object> securityTokens = new Hashtable<>();
+    private static final Hashtable<Object,Object> securityTokens =
+            new Hashtable<>();
 
 
     // --------------------------------------------------------- Public Methods
 
+
     /**
-     * Set a security token for a Catalina context. Can be set only once.
+     * Set a security token for a context. Can be set only once.
      *
-     * @param name Name of the Catalina context
+     * @param name Name of the context
      * @param token Security token
      */
     public static void setSecurityToken(Object name, Object token) {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(new RuntimePermission(
-                    ContextAccessController.class.getName()
-                            + ".setSecurityToken"));
-        }
         if ((!securityTokens.containsKey(name)) && (token != null)) {
             securityTokens.put(name, token);
         }
@@ -63,7 +64,7 @@ public class ContextAccessController {
     /**
      * Remove a security token for a context.
      *
-     * @param name Name of the Catalina context
+     * @param name Name of the context
      * @param token Security token
      */
     public static void unsetSecurityToken(Object name, Object token) {
@@ -74,14 +75,12 @@ public class ContextAccessController {
 
 
     /**
-     * Check a submitted security token.
+     * Check a submitted security token. The submitted token must be equal to
+     * the token present in the repository. If no token is present for the
+     * context, then returns true.
      *
-     * @param name Name of the Catalina context
+     * @param name Name of the context
      * @param token Submitted security token
-     *
-     * @return <code>true</code> if the submitted token is equal to the token
-     *         in the repository or if no token is present in the repository.
-     *         Otherwise, <code>false</code>
      */
     public static boolean checkSecurityToken
         (Object name, Object token) {
@@ -93,7 +92,7 @@ public class ContextAccessController {
     /**
      * Allow writing to a context.
      *
-     * @param name Name of the Catalina context
+     * @param name Name of the context
      * @param token Security token
      */
     public static void setWritable(Object name, Object token) {
@@ -103,9 +102,9 @@ public class ContextAccessController {
 
 
     /**
-     * Set whether or not a Catalina context is writable.
+     * Set whether or not a context is writable.
      *
-     * @param name Name of the Catalina context
+     * @param name Name of the context
      */
     public static void setReadOnly(Object name) {
         readOnlyContexts.put(name, name);
@@ -113,14 +112,14 @@ public class ContextAccessController {
 
 
     /**
-     * Is the context is writable?
+     * Returns if a context is writable.
      *
-     * @param name Name of the Catalina context
-     *
-     * @return <code>true</code> if it is writable, otherwise <code>false</code>
+     * @param name Name of the context
      */
     public static boolean isWritable(Object name) {
         return !(readOnlyContexts.containsKey(name));
     }
+
+
 }
 

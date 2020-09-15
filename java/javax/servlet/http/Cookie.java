@@ -48,8 +48,9 @@ import java.util.ResourceBundle;
  * cache pages that use cookies created with this class. This class does not
  * support the cache control defined with HTTP 1.1.
  * <p>
- * This class supports both the RFC 2109 and the RFC 6265 specifications.
- * By default, cookies are created using RFC 6265.
+ * This class supports both the Version 0 (by Netscape) and Version 1 (by RFC
+ * 2109) cookie specifications. By default, cookies are created using Version 0
+ * to ensure the best interoperability.
  */
 public class Cookie implements Cloneable, Serializable {
 
@@ -67,7 +68,7 @@ public class Cookie implements Cloneable, Serializable {
             validation = new RFC2109Validator();
         }
         else {
-            validation = new RFC6265Validator();
+            validation = new NetscapeValidator();
         }
     }
 
@@ -351,7 +352,7 @@ public class Cookie implements Cloneable, Serializable {
         try {
             return super.clone();
         } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -383,7 +384,7 @@ public class Cookie implements Cloneable, Serializable {
 
 class CookieNameValidator {
     private static final String LSTRING_FILE = "javax.servlet.http.LocalStrings";
-    protected static final ResourceBundle lStrings = ResourceBundle.getBundle(LSTRING_FILE);
+    private static final ResourceBundle lStrings = ResourceBundle.getBundle(LSTRING_FILE);
 
     protected final BitSet allowed;
 
@@ -400,7 +401,16 @@ class CookieNameValidator {
         if (name == null || name.length() == 0) {
             throw new IllegalArgumentException(lStrings.getString("err.cookie_name_blank"));
         }
-        if (!isToken(name)) {
+        if (!isToken(name) ||
+                name.equalsIgnoreCase("Comment") ||
+                name.equalsIgnoreCase("Discard") ||
+                name.equalsIgnoreCase("Domain") ||
+                name.equalsIgnoreCase("Expires") ||
+                name.equalsIgnoreCase("Max-Age") ||
+                name.equalsIgnoreCase("Path") ||
+                name.equalsIgnoreCase("Secure") ||
+                name.equalsIgnoreCase("Version") ||
+                name.startsWith("$")) {
             String errMsg = lStrings.getString("err.cookie_name_is_token");
             throw new IllegalArgumentException(MessageFormat.format(errMsg, name));
         }
@@ -419,16 +429,20 @@ class CookieNameValidator {
     }
 }
 
-class RFC6265Validator extends CookieNameValidator {
-    private static final String RFC2616_SEPARATORS = "()<>@,;:\\\"/[]?={} \t";
+class NetscapeValidator extends CookieNameValidator {
+    private static final String NETSCAPE_SEPARATORS = ",; ";
 
-    RFC6265Validator() {
-        super(RFC2616_SEPARATORS);
+    NetscapeValidator() {
+        super(NETSCAPE_SEPARATORS);
     }
 }
 
-class RFC2109Validator extends RFC6265Validator {
+class RFC2109Validator extends CookieNameValidator {
+    private static final String RFC2616_SEPARATORS = "()<>@,;:\\\"/[]?={} \t";
+
     RFC2109Validator() {
+        super(RFC2616_SEPARATORS);
+
         // special treatment to allow for FWD_SLASH_IS_SEPARATOR property
         boolean allowSlash;
         String prop = System.getProperty("org.apache.tomcat.util.http.ServerCookie.FWD_SLASH_IS_SEPARATOR");
@@ -439,15 +453,6 @@ class RFC2109Validator extends RFC6265Validator {
         }
         if (allowSlash) {
             allowed.set('/');
-        }
-    }
-
-    @Override
-    void validate(String name) {
-        super.validate(name);
-        if (name.charAt(0) == '$') {
-            String errMsg = lStrings.getString("err.cookie_name_is_token");
-            throw new IllegalArgumentException(MessageFormat.format(errMsg, name));
         }
     }
 }

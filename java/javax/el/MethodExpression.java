@@ -21,10 +21,6 @@ public abstract class MethodExpression extends Expression {
     private static final long serialVersionUID = 8163925562047324656L;
 
     /**
-     * @param context The EL context for this evaluation
-     *
-     * @return Information about the method that this expression resolves to
-     *
      * @throws NullPointerException
      *              If the supplied context is <code>null</code>
      * @throws PropertyNotFoundException
@@ -38,11 +34,6 @@ public abstract class MethodExpression extends Expression {
     public abstract MethodInfo getMethodInfo(ELContext context);
 
     /**
-     * @param context The EL context for this evaluation
-     * @param params  The parameters with which to invoke this method expression
-     *
-     * @return The result of invoking this method expression
-     *
      * @throws NullPointerException
      *              If the supplied context is <code>null</code>
      * @throws PropertyNotFoundException
@@ -57,7 +48,6 @@ public abstract class MethodExpression extends Expression {
     public abstract Object invoke(ELContext context, Object[] params);
 
     /**
-     * @return This default implementation always returns <code>false</code>
      * @since EL 3.0
      */
     public boolean isParametersProvided() {
@@ -71,8 +61,6 @@ public abstract class MethodExpression extends Expression {
      * Note: The spelling mistake is deliberate.
      * isParmetersProvided()  - Specification definition
      * isParametersProvided() - Corrected spelling
-     *
-     * @return Always <code>false</code>
      *
      * @deprecated  Use {@link #isParametersProvided()}
      */

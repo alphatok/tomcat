@@ -20,17 +20,29 @@ package org.apache.tomcat.util.bcel.classfile;
 import java.io.DataInput;
 import java.io.IOException;
 
-import org.apache.tomcat.util.bcel.Const;
+import org.apache.tomcat.util.bcel.Constants;
 
 /**
- * This class is derived from the abstract {@link Constant}
+ * This class is derived from the abstract
+ * <A HREF="org.apache.tomcat.util.bcel.classfile.Constant.html">Constant</A> class
  * and represents a reference to a float object.
  *
+ * @author  <A HREF="mailto:m.dahm@gmx.de">M. Dahm</A>
  * @see     Constant
  */
 public final class ConstantFloat extends Constant {
 
-    private final float bytes;
+    private static final long serialVersionUID = 8301269629885378651L;
+    private float bytes;
+
+
+    /**
+     * @param bytes Data
+     */
+    public ConstantFloat(float bytes) {
+        super(Constants.CONSTANT_Float);
+        this.bytes = bytes;
+    }
 
 
     /**
@@ -39,9 +51,8 @@ public final class ConstantFloat extends Constant {
      * @param file Input stream
      * @throws IOException
      */
-    ConstantFloat(final DataInput file) throws IOException {
-        super(Const.CONSTANT_Float);
-        this.bytes = file.readFloat();
+    ConstantFloat(DataInput file) throws IOException {
+        this(file.readFloat());
     }
 
 

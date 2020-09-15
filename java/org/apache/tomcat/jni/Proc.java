@@ -102,7 +102,6 @@ public class Proc {
      * Allocate apr_proc_t structure from pool
      * This is not an apr function.
      * @param cont The pool to use.
-     * @return the pointer
      */
     public static native long alloc(long cont);
 
@@ -120,7 +119,6 @@ public class Proc {
      * Create a new process and execute a new program within that process.
      * This function returns without waiting for the new process to terminate;
      * use apr_proc_wait for that.
-     * @param proc The process handle
      * @param progname The program to run
      * @param args The arguments to pass to the new program.  The first
      *             one should be the program name.
@@ -188,7 +186,6 @@ public class Proc {
      *               child is dead or not.
      * </PRE>
      * @param pool Pool to allocate child information out of.
-     * @return the operation status
      */
     public static native int waitAllProcs(long proc, int [] exit,
                                           int waithow, long pool);
@@ -198,7 +195,6 @@ public class Proc {
      * @param daemonize set to non-zero if the process should daemonize
      *                  and become a background process, else it will
      *                  stay in the foreground.
-     * @return the operation status
      */
     public static native int detach(int daemonize);
 
@@ -206,7 +202,6 @@ public class Proc {
      * Terminate a process.
      * @param proc The process to terminate.
      * @param sig How to kill the process.
-     * @return the operation status
      */
     public static native int kill(long proc, int sig);
 

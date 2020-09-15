@@ -19,7 +19,6 @@
 package org.apache.el.parser;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.el.lang.EvaluationContext;
 
@@ -29,7 +28,7 @@ public final class AstMethodParameters extends SimpleNode {
     }
 
     public Object[] getParameters(EvaluationContext ctx) {
-        List<Object> params = new ArrayList<>();
+        ArrayList<Object> params = new ArrayList<>();
         for (int i = 0; i < this.jjtGetNumChildren(); i++) {
             params.add(this.jjtGetChild(i).getValue(ctx));
         }

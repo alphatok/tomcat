@@ -38,16 +38,16 @@ public class JarResourceRoot extends AbstractResource {
     public JarResourceRoot(WebResourceRoot root, File base, String baseUrl,
             String webAppPath) {
         super(root, webAppPath);
-        // Validate the webAppPath before going any further
-        if (!webAppPath.endsWith("/")) {
-            throw new IllegalArgumentException(sm.getString(
-                    "jarResourceRoot.invalidWebAppPath", webAppPath));
-        }
         this.base = base;
         this.baseUrl = "jar:" + baseUrl;
         // Extract the name from the webAppPath
-        // Strip the trailing '/' character
-        String resourceName = webAppPath.substring(0, webAppPath.length() - 1);
+        // Strip any trailing '/' character
+        String resourceName;
+        if (webAppPath.endsWith("/")) {
+            resourceName = webAppPath.substring(0, webAppPath.length() - 1);
+        } else {
+            resourceName = webAppPath;
+        }
         int i = resourceName.lastIndexOf('/');
         if (i > -1) {
             resourceName = resourceName.substring(i + 1);
@@ -122,28 +122,17 @@ public class JarResourceRoot extends AbstractResource {
 
     @Override
     public URL getURL() {
-        String url = baseUrl + "!/";
         try {
-            return new URL(url);
+            return new URL(baseUrl + "!/");
         } catch (MalformedURLException e) {
             if (log.isDebugEnabled()) {
-                log.debug(sm.getString("fileResource.getUrlFail", url), e);
+                log.debug(sm.getString("fileResource.getUrlFail",
+                        "", baseUrl), e);
             }
             return null;
         }
     }
 
-    @Override
-    public URL getCodeBase() {
-        try {
-            return new URL(baseUrl);
-        } catch (MalformedURLException e) {
-            if (getLog().isDebugEnabled()) {
-                getLog().debug(sm.getString("fileResource.getUrlFail", baseUrl), e);
-            }
-            return null;
-        }
-    }
     @Override
     protected Log getLog() {
         return log;

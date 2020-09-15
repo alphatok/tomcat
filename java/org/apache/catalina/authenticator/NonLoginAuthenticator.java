@@ -17,9 +17,11 @@
 package org.apache.catalina.authenticator;
 
 import java.io.IOException;
+import java.security.Principal;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.catalina.Session;
 import org.apache.catalina.connector.Request;
 
 /**
@@ -48,7 +50,7 @@ public final class NonLoginAuthenticator extends AuthenticatorBase {
      * Therefore, it is necessary to always return <code>true</code> to
      * indicate the user has not failed authentication.</p>
      *
-     * <p>There are two cases:</p>
+     * <p>There are two cases:
      * <ul>
      * <li>without SingleSignon: a Session instance does not yet exist
      *     and there is no <code>auth-method</code> to authenticate the
@@ -66,7 +68,7 @@ public final class NonLoginAuthenticator extends AuthenticatorBase {
      *           keep the SSOE "alive", even if all the other properly
      *           authenticated Sessions expire first... until it expires too.
      * </li>
-     * </ul>
+     * </ul></p>
      *
      * @param request  Request we are processing
      * @param response Response we are creating
@@ -74,17 +76,37 @@ public final class NonLoginAuthenticator extends AuthenticatorBase {
      * @exception IOException if an input/output error occurs
      */
     @Override
-    protected boolean doAuthenticate(Request request, HttpServletResponse response)
+    public boolean authenticate(Request request, HttpServletResponse response)
         throws IOException {
 
-        // Don't try and use SSO to authenticate since there is no auth
-        // configured for this web application
-        if (checkForCachedAuthentication(request, response, true)) {
-            // save the inherited Principal in this session so it can remain
-            // authenticated until it expires
+        Principal principal = request.getPrincipal();
+        if (principal != null) {
+            // excellent... we have already authenticated the client somehow,
+            // probably from another container that has a login-config
+            if (containerLog.isDebugEnabled())
+                containerLog.debug("Already authenticated as '"
+                          + principal.getName() + "'");
+
             if (cache) {
-                request.getSessionInternal(true).setPrincipal(request.getUserPrincipal());
+                // create a new session (only if necessary)
+                Session session = request.getSessionInternal(true);
+
+                // save the inherited Principal (if necessary) in this
+                // session so it can remain authenticated until it expires
+                session.setPrincipal(principal);
+
+                // is there an SSO session cookie?
+                String ssoId =
+                        (String) request.getNote(Constants.REQ_SSOID_NOTE);
+                if (ssoId != null) {
+                    if (containerLog.isDebugEnabled())
+                        containerLog.debug("User authenticated by existing SSO");
+                    // Associate session with the existing SSO ID if necessary
+                    associate(ssoId, session);
+                }
             }
+
+            // user was already authenticated, with or without a cookie
             return true;
         }
 
@@ -93,6 +115,7 @@ public final class NonLoginAuthenticator extends AuthenticatorBase {
         // to say the user is now authenticated because access to
         // protected resources will only be allowed with a matching role.
         // i.e. SC_FORBIDDEN (403 status) will be generated later.
+
         if (containerLog.isDebugEnabled())
             containerLog.debug("User authenticated without any roles");
         return true;

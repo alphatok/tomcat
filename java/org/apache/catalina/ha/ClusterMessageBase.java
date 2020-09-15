@@ -22,13 +22,18 @@ public abstract class ClusterMessageBase implements ClusterMessage {
 
     private static final long serialVersionUID = 1L;
 
-    private long timestamp;
     protected transient Member address;
-
+    private long timestamp;
     public ClusterMessageBase() {
         // NO-OP
     }
 
+    /**
+     * getAddress
+     *
+     * @return Member
+     * TODO Implement this org.apache.catalina.ha.ClusterMessage method
+     */
     @Override
     public Member getAddress() {
         return address;
@@ -39,6 +44,12 @@ public abstract class ClusterMessageBase implements ClusterMessage {
         return timestamp;
     }
 
+    /**
+     * setAddress
+     *
+     * @param member Member
+     * TODO Implement this org.apache.catalina.ha.ClusterMessage method
+     */
     @Override
     public void setAddress(Member member) {
         this.address = member;

@@ -23,11 +23,9 @@ public abstract class FunctionMapper {
     public abstract Method resolveFunction(String prefix, String localName);
 
     /**
-     * Map a method to a function name.
-     *
-     * @param prefix    Function prefix
-     * @param localName Function name
-     * @param method    Method
+     * @param prefix
+     * @param localName
+     * @param method
      *
      * @since EL 3.0
      */

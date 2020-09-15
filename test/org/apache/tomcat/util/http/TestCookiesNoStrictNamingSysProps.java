@@ -14,6 +14,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package org.apache.tomcat.util.http;
 
 import static org.junit.Assert.assertEquals;
@@ -24,11 +25,10 @@ import org.apache.catalina.startup.Tomcat;
 import org.apache.tomcat.util.buf.ByteChunk;
 
 /**
- * Test case for {@link LegacyCookieProcessor}. <b>Note</b> because of the use
- * of <code>final static</code> constants in {@link javax.servlet.http.Cookie},
- * each of these tests must be executed in a new JVM instance. The tests have
- * been placed in separate classes to facilitate this when running the unit
- * tests via Ant.
+ * Test case for {@link Cookies}. <b>Note</b> because of the use of <code>final
+ * static</code> constants in {@link Cookies}, each of these tests must be
+ * executed in a new JVM instance. The tests have been place in separate classes
+ * to facilitate this when running the unit tests via Ant.
  */
 public class TestCookiesNoStrictNamingSysProps extends CookiesBaseTest {
 
@@ -54,7 +54,7 @@ public class TestCookiesNoStrictNamingSysProps extends CookiesBaseTest {
         res = getUrl("http://localhost:" + getPort() + "/blank");
         assertEquals("Cookie name fail", res.toString());
         res = getUrl("http://localhost:" + getPort() + "/invalidFwd");
-        assertEquals("Cookie name fail", res.toString());
+        assertEquals("Cookie name ok", res.toString());
         res = getUrl("http://localhost:" + getPort() + "/invalidStrict");
         assertEquals("Cookie name ok", res.toString());
         res = getUrl("http://localhost:" + getPort() + "/valid");

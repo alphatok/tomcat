@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.juli;
 
 import java.io.File;
@@ -35,7 +36,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
 import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -86,7 +86,7 @@ public class ClassLoaderLogManager extends LogManager {
      * application redeployment.
      */
     protected final Map<ClassLoader, ClassLoaderLogInfo> classLoaderLoggers =
-            new WeakHashMap<>(); // Guarded by this
+        new WeakHashMap<>();
 
 
     /**
@@ -206,7 +206,7 @@ public class ClassLoaderLogManager extends LogManager {
         // Unlike java.util.logging, the default is to not delegate if a list of handlers
         // has been specified for the logger.
         String useParentHandlersString = getProperty(loggerName + ".useParentHandlers");
-        if (Boolean.parseBoolean(useParentHandlersString)) {
+        if (Boolean.valueOf(useParentHandlersString).booleanValue()) {
             logger.setUseParentHandlers(true);
         }
 
@@ -273,7 +273,7 @@ public class ClassLoaderLogManager extends LogManager {
     }
 
 
-    private synchronized String findProperty(String name) {
+    private String findProperty(String name) {
         ClassLoader classLoader = Thread.currentThread()
                 .getContextClassLoader();
         ClassLoaderLogInfo info = getClassLoaderInfo(classLoader);
@@ -343,7 +343,7 @@ public class ClassLoaderLogManager extends LogManager {
     /**
      * Shuts down the logging system.
      */
-    public synchronized void shutdown() {
+    public void shutdown() {
         // The JVM is being shutdown. Make sure all loggers for all class
         // loaders are shutdown
         for (ClassLoaderLogInfo clLogInfo : classLoaderLoggers.values()) {
@@ -386,9 +386,8 @@ public class ClassLoaderLogManager extends LogManager {
      *
      * @param classLoader The classloader for which we will retrieve or build the
      *                    configuration
-     * @return the log configuration
      */
-    protected synchronized ClassLoaderLogInfo getClassLoaderInfo(ClassLoader classLoader) {
+    protected ClassLoaderLogInfo getClassLoaderInfo(ClassLoader classLoader) {
 
         if (classLoader == null) {
             classLoader = ClassLoader.getSystemClassLoader();
@@ -416,10 +415,10 @@ public class ClassLoaderLogManager extends LogManager {
     /**
      * Read configuration for the specified classloader.
      *
-     * @param classLoader The classloader
-     * @throws IOException Error reading configuration
+     * @param classLoader
+     * @throws IOException Error
      */
-    protected synchronized void readConfiguration(ClassLoader classLoader)
+    protected void readConfiguration(ClassLoader classLoader)
         throws IOException {
 
         InputStream is = null;
@@ -468,8 +467,7 @@ public class ClassLoaderLogManager extends LogManager {
                 try {
                     is = new FileInputStream(replace(configFileStr));
                 } catch (IOException e) {
-                    System.err.println("Configuration error");
-                    e.printStackTrace();
+                    // Ignore
                 }
             }
             // Try the default JVM configuration
@@ -479,8 +477,7 @@ public class ClassLoaderLogManager extends LogManager {
                 try {
                     is = new FileInputStream(defaultFile);
                 } catch (IOException e) {
-                    System.err.println("Configuration error");
-                    e.printStackTrace();
+                    // Critical problem, do something ...
                 }
             }
         }
@@ -517,7 +514,7 @@ public class ClassLoaderLogManager extends LogManager {
      * @param classLoader for which the configuration will be loaded
      * @throws IOException If something wrong happens during loading
      */
-    protected synchronized void readConfiguration(InputStream is, ClassLoader classLoader)
+    protected void readConfiguration(InputStream is, ClassLoader classLoader)
         throws IOException {
 
         ClassLoaderLogInfo info = classLoaderLoggers.get(classLoader);
@@ -550,7 +547,7 @@ public class ClassLoaderLogManager extends LogManager {
                     continue;
                 }
                 // Parse and remove a prefix (prefix start with a digit, such as
-                // "10WebappFooHandler.")
+                // "10WebappFooHanlder.")
                 if (Character.isDigit(handlerClassName.charAt(0))) {
                     int pos = handlerClassName.indexOf('.');
                     if (pos >= 0) {
@@ -585,8 +582,8 @@ public class ClassLoaderLogManager extends LogManager {
     /**
      * Set parent child relationship between the two specified loggers.
      *
-     * @param logger The logger
-     * @param parent The parent logger
+     * @param logger
+     * @param parent
      */
     protected static void doSetParentLogger(final Logger logger,
             final Logger parent) {
@@ -620,11 +617,8 @@ public class ClassLoaderLogManager extends LogManager {
                     break;
                 }
                 String propName = str.substring(pos_start + 2, pos_end);
-
-                String replacement = replaceWebApplicationProperties(propName);
-                if (replacement == null) {
-                    replacement = propName.length() > 0 ? System.getProperty(propName) : null;
-                }
+                String replacement = propName.length() > 0 ? System
+                        .getProperty(propName) : null;
                 if (replacement != null) {
                     builder.append(replacement);
                 } else {
@@ -638,35 +632,15 @@ public class ClassLoaderLogManager extends LogManager {
         return result;
     }
 
-
-    private String replaceWebApplicationProperties(String propName) {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        if (cl instanceof WebappProperties) {
-            WebappProperties wProps = (WebappProperties) cl;
-            if ("classloader.webappName".equals(propName)) {
-                return wProps.getWebappName();
-            } else if ("classloader.hostName".equals(propName)) {
-                return wProps.getHostName();
-            } else if ("classloader.serviceName".equals(propName)) {
-                return wProps.getServiceName();
-            } else {
-                return null;
-            }
-        } else {
-            return null;
-        }
-    }
-
-
     // ---------------------------------------------------- LogNode Inner Class
 
 
     protected static final class LogNode {
         Logger logger;
 
-        final Map<String, LogNode> children = new HashMap<>();
+        protected final Map<String, LogNode> children = new HashMap<>();
 
-        final LogNode parent;
+        protected final LogNode parent;
 
         LogNode(final LogNode parent, final Logger logger) {
             this.parent = parent;
@@ -732,7 +706,7 @@ public class ClassLoaderLogManager extends LogManager {
 
     protected static final class ClassLoaderLogInfo {
         final LogNode rootNode;
-        final Map<String, Logger> loggers = new ConcurrentHashMap<>();
+        final Map<String, Logger> loggers = new HashMap<>();
         final Map<String, Handler> handlers = new HashMap<>();
         final Properties props = new Properties();
 

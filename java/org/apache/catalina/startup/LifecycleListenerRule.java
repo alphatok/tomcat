@@ -122,7 +122,7 @@ public class LifecycleListenerRule extends Rule {
             className = listenerClass;
         }
 
-        // Instantiate a new LifecycleListener implementation object
+        // Instantiate a new LifecyleListener implementation object
         Class<?> clazz = Class.forName(className);
         LifecycleListener listener =
             (LifecycleListener) clazz.newInstance();

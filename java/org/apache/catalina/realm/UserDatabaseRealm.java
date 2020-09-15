@@ -60,6 +60,12 @@ public class UserDatabaseRealm
 
 
     /**
+     * Descriptive information about this Realm implementation.
+     */
+    protected static final String name = "UserDatabaseRealm";
+
+
+    /**
      * The global JNDI name of the <code>UserDatabase</code> resource
      * we will be utilizing.
      */
@@ -69,7 +75,7 @@ public class UserDatabaseRealm
     // ------------------------------------------------------------- Properties
 
     /**
-     * @return the global JNDI name of the <code>UserDatabase</code> resource
+     * Return the global JNDI name of the <code>UserDatabase</code> resource
      * we will be using.
      */
     public String getResourceName() {
@@ -146,21 +152,34 @@ public class UserDatabaseRealm
         return false;
     }
 
-
     // ------------------------------------------------------ Protected Methods
+
+
+    /**
+     * Return a short name for this Realm implementation.
+     */
+    @Override
+    protected String getName() {
+
+        return (name);
+
+    }
+
 
     /**
      * Return the password associated with the given principal's user name.
      */
     @Override
     protected String getPassword(String username) {
+
         User user = database.findUser(username);
 
         if (user == null) {
             return null;
         }
 
-        return user.getPassword();
+        return (user.getPassword());
+
     }
 
 

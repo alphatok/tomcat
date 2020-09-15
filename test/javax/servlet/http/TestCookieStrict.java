@@ -25,6 +25,7 @@ import org.junit.Test;
 public class TestCookieStrict {
     static {
         System.setProperty("org.apache.tomcat.util.http.ServerCookie.STRICT_NAMING", "true");
+        System.setProperty("org.apache.tomcat.util.http.ServerCookie.FWD_SLASH_IS_SEPARATOR", "true");
     }
 
     @Test
@@ -36,9 +37,8 @@ public class TestCookieStrict {
         Assert.assertEquals(-1, cookie.getMaxAge());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void strictNamingImpliesRFC2109() {
-        @SuppressWarnings("unused")
-        Cookie cookie = new Cookie("@Foo", null);
+    @Test
+    public void actualCharactersAllowedInName() {
+        TestCookie.checkCharInName(TestCookie.TOKEN);
     }
 }

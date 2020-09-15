@@ -21,8 +21,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Enumeration;
 
+import javax.servlet.Filter;
 import javax.servlet.FilterChain;
-import javax.servlet.GenericFilter;
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -43,13 +44,11 @@ import org.apache.juli.logging.LogFactory;
  * <p>When using this Filter, it is strongly recommended that the
  * <code>org.apache.catalina.filter.RequestDumperFilter</code> logger is
  * directed to a dedicated file and that the
- * <code>org.apache.juli.VerbatimFormatter</code> is used.</p>
+ * <code>org.apache.juli.VerbatimFormmater</code> is used.</p>
  *
  * @author Craig R. McClanahan
  */
-public class RequestDumperFilter extends GenericFilter {
-
-    private static final long serialVersionUID = 1L;
+public class RequestDumperFilter implements Filter {
 
     private static final String NON_HTTP_REQ_MSG =
         "Not available. Non-http request.";
@@ -109,7 +108,7 @@ public class RequestDumperFilter extends GenericFilter {
 
         doLog(" characterEncoding", request.getCharacterEncoding());
         doLog("     contentLength",
-                Long.toString(request.getContentLengthLong()));
+                Integer.valueOf(request.getContentLength()).toString());
         doLog("       contentType", request.getContentType());
 
         if (hRequest == null) {
@@ -187,7 +186,7 @@ public class RequestDumperFilter extends GenericFilter {
         doLog("            scheme", request.getScheme());
         doLog("        serverName", request.getServerName());
         doLog("        serverPort",
-                Integer.toString(request.getServerPort()));
+                Integer.valueOf(request.getServerPort()).toString());
 
         if (hRequest == null) {
             doLog("       servletPath", NON_HTTP_REQ_MSG);
@@ -236,7 +235,7 @@ public class RequestDumperFilter extends GenericFilter {
             doLog("        remoteUser", NON_HTTP_RES_MSG);
         } else {
             doLog("            status",
-                    Integer.toString(hResponse.getStatus()));
+                    Integer.valueOf(hResponse.getStatus()).toString());
         }
 
         doLog("END TIME          ", getTimestamp());
@@ -263,6 +262,16 @@ public class RequestDumperFilter extends GenericFilter {
             ts.update();
         }
         return ts.dateString;
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // NOOP
+    }
+
+    @Override
+    public void destroy() {
+        // NOOP
     }
 
     private static final class Timestamp {

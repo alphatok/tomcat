@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.jar.Manifest;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +43,7 @@ public abstract class AbstractTestResourceSet {
         return "";
     }
 
-    public abstract File getBaseDir();
+    public abstract String getBaseDir();
 
     @Before
     public final void setup() throws LifecycleException {
@@ -67,24 +66,7 @@ public abstract class AbstractTestResourceSet {
 
     @Test
     public final void testGetResourceRoot() {
-        doTestGetResourceRoot(true);
-    }
-
-    @Test
-    public final void testGetResourceRootNoSlash() {
-        doTestGetResourceRoot(false);
-    }
-
-
-    private void doTestGetResourceRoot(boolean slash) {
-        String mount = getMount();
-        if (!slash && mount.length() == 0) {
-            return;
-        }
-        mount = mount + (slash ? "/" : "");
-
-        WebResource webResource = resourceRoot.getResource(mount);
-
+        WebResource webResource = resourceRoot.getResource(getMount() + "/");
         Assert.assertTrue(webResource.isDirectory());
         String expected;
         if (getMount().length() > 0) {
@@ -93,7 +75,7 @@ public abstract class AbstractTestResourceSet {
             expected = "";
         }
         Assert.assertEquals(expected, webResource.getName());
-        Assert.assertEquals(mount + (!slash ? "/" : ""), webResource.getWebappPath());
+        Assert.assertEquals(getMount() + "/", webResource.getWebappPath());
     }
 
     @Test
@@ -102,9 +84,6 @@ public abstract class AbstractTestResourceSet {
         Assert.assertTrue(webResource.isDirectory());
         Assert.assertEquals("d1", webResource.getName());
         Assert.assertEquals(getMount() + "/d1/", webResource.getWebappPath());
-        Assert.assertEquals(-1, webResource.getContentLength());
-        Assert.assertNull(webResource.getContent());
-        Assert.assertNull(webResource.getInputStream());
     }
 
     @Test
@@ -113,9 +92,6 @@ public abstract class AbstractTestResourceSet {
         Assert.assertTrue(webResource.isDirectory());
         Assert.assertEquals("d1", webResource.getName());
         Assert.assertEquals(getMount() + "/d1/", webResource.getWebappPath());
-        Assert.assertEquals(-1, webResource.getContentLength());
-        Assert.assertNull(webResource.getContent());
-        Assert.assertNull(webResource.getInputStream());
     }
 
     @Test
@@ -126,9 +102,6 @@ public abstract class AbstractTestResourceSet {
         Assert.assertEquals("d1-f1.txt", webResource.getName());
         Assert.assertEquals(
                 getMount() + "/d1/d1-f1.txt", webResource.getWebappPath());
-        Assert.assertEquals(0, webResource.getContentLength());
-        Assert.assertEquals(0, webResource.getContent().length);
-        Assert.assertNotNull(webResource.getInputStream());
     }
 
     @Test
@@ -162,22 +135,7 @@ public abstract class AbstractTestResourceSet {
 
     @Test
     public final void testListRoot() {
-        doTestListRoot(true);
-    }
-
-    @Test
-    public final void testListRootNoSlash() {
-        doTestListRoot(false);
-    }
-
-
-    private void doTestListRoot(boolean slash) {
-        String mount = getMount();
-        if (!slash && mount.length() == 0) {
-            return;
-        }
-
-        String[] results = resourceRoot.list(mount + (slash ? "/" : ""));
+        String[] results = resourceRoot.list(getMount() + "/");
 
         Set<String> expected = new HashSet<>();
         expected.add("d1");
@@ -185,16 +143,8 @@ public abstract class AbstractTestResourceSet {
         expected.add("f1.txt");
         expected.add("f2.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(".svn");
-        // Files visible in some tests only
-        optional.add(getMount() + ".ignore-me.txt");
-        optional.add("META-INF");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -206,15 +156,8 @@ public abstract class AbstractTestResourceSet {
         Set<String> expected = new HashSet<>();
         expected.add("d1-f1.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(".svn");
-        // Files visible in some tests only
-        optional.add(".ignore-me.txt");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -226,15 +169,8 @@ public abstract class AbstractTestResourceSet {
         Set<String> expected = new HashSet<>();
         expected.add("d1-f1.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(".svn");
-        // Files visible in some tests only
-        optional.add(".ignore-me.txt");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -256,22 +192,7 @@ public abstract class AbstractTestResourceSet {
 
     @Test
     public final void testListWebAppPathsRoot() {
-        doTestListWebAppPathsRoot(true);
-    }
-
-    @Test
-    public final void testListWebAppPathsRootNoSlash() {
-        doTestListWebAppPathsRoot(false);
-    }
-
-
-    private void doTestListWebAppPathsRoot(boolean slash) {
-        String mount = getMount();
-        if (!slash && mount.length() == 0) {
-            return;
-        }
-
-        Set<String> results = resourceRoot.listWebAppPaths(mount + (slash ? "/" : ""));
+        Set<String> results = resourceRoot.listWebAppPaths(getMount() + "/");
 
         Set<String> expected = new HashSet<>();
         expected.add(getMount() + "/d1/");
@@ -279,17 +200,8 @@ public abstract class AbstractTestResourceSet {
         expected.add(getMount() + "/f1.txt");
         expected.add(getMount() + "/f2.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(getMount() + "/.svn/");
-        // Files visible in some tests only
-        optional.add(getMount() + "/.ignore-me.txt");
-        // Files visible in some configurations only
-        optional.add(getMount() + "/META-INF/");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -301,15 +213,8 @@ public abstract class AbstractTestResourceSet {
         Set<String> expected = new HashSet<>();
         expected.add(getMount() + "/d1/d1-f1.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(getMount() + "/d1/.svn/");
-        // Files visible in some tests only
-        optional.add(getMount() + "/d1/.ignore-me.txt");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -321,15 +226,8 @@ public abstract class AbstractTestResourceSet {
         Set<String> expected = new HashSet<>();
         expected.add(getMount() + "/d1/d1-f1.txt");
 
-        // Directories created by Subversion 1.6 and earlier clients
-        Set<String> optional = new HashSet<>();
-        optional.add(getMount() + "/d1/.svn/");
-        // Files visible in some tests only
-        optional.add(getMount() + "/d1/.ignore-me.txt");
-
         for (String result : results) {
-            Assert.assertTrue(result,
-                    expected.remove(result) || optional.remove(result));
+            Assert.assertTrue(result, expected.remove(result));
         }
         Assert.assertEquals(0, expected.size());
     }
@@ -391,19 +289,16 @@ public abstract class AbstractTestResourceSet {
 
     @Test
     public final void testMkdirNew() {
-        String newDirName = getNewDirName();
         if (isWriteable()) {
-            Assert.assertTrue(resourceRoot.mkdir(getMount() + "/" + newDirName));
+            Assert.assertTrue(resourceRoot.mkdir(getMount() + "/new-test"));
 
-            File file = new File(getBaseDir(), newDirName);
+            File file = new File(getBaseDir(), "new-test");
             Assert.assertTrue(file.isDirectory());
             Assert.assertTrue(file.delete());
         } else {
-            Assert.assertFalse(resourceRoot.mkdir(getMount() + "/" + newDirName));
+            Assert.assertFalse(resourceRoot.mkdir(getMount() + "/new-test"));
         }
     }
-
-    protected abstract String getNewDirName();
 
     //------------------------------------------------------------------ write()
 
@@ -461,29 +356,24 @@ public abstract class AbstractTestResourceSet {
     }
 
     @Test(expected = NullPointerException.class)
-    public final void testWriteNull() {
-        resourceRoot.write(getMount() + "/" + getNewFileNameNull(), null, false);
+    public final void testWriteNew() {
+        resourceRoot.write(getMount() + "/new-test", null, false);
     }
-
-    protected abstract String getNewFileNameNull();
 
     @Test
     public final void testWrite() {
-        String newFileName = getNewFileName();
         InputStream is = new ByteArrayInputStream("test".getBytes());
         if (isWriteable()) {
             Assert.assertTrue(resourceRoot.write(
-                    getMount() + "/" + newFileName, is, false));
-            File file = new File(getBaseDir(), newFileName);
+                    getMount() + "/new-test", is, false));
+            File file = new File(getBaseDir(), "new-test");
             Assert.assertTrue(file.exists());
             Assert.assertTrue(file.delete());
         } else {
             Assert.assertFalse(resourceRoot.write(
-                    getMount() + "/" + newFileName, is, false));
+                    getMount() + "/new-test", is, false));
         }
     }
-
-    protected abstract String getNewFileName();
 
     // ------------------------------------------------------ getCanonicalPath()
 
@@ -518,21 +408,6 @@ public abstract class AbstractTestResourceSet {
             Assert.assertNotNull(doesNotExistCanonicalPath);
         } else {
             Assert.assertNull(doesNotExistCanonicalPath);
-        }
-    }
-
-
-    // ----------------------------------------------------------- getManifest()
-
-    @Test
-    public final void testGetManifest() {
-        WebResource exists = resourceRoot.getResource(getMount() + "/d1/d1-f1.txt");
-        boolean manifestExists = resourceRoot.getResource("/META-INF/MANIFEST.MF").exists();
-        Manifest m = exists.getManifest();
-        if (getMount().equals("") && manifestExists) {
-            Assert.assertNotNull(m);
-        } else {
-            Assert.assertNull(m);
         }
     }
 

@@ -14,8 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.apache.naming;
 
+import java.util.Enumeration;
+
+import javax.naming.Context;
+import javax.naming.RefAddr;
+import javax.naming.Reference;
 import javax.naming.StringRefAddr;
 
 /**
@@ -23,16 +30,18 @@ import javax.naming.StringRefAddr;
  *
  * @author Remy Maucherat
  */
-public class ResourceRef extends AbstractRef {
+public class ResourceRef extends Reference {
 
     private static final long serialVersionUID = 1L;
 
+
+    // -------------------------------------------------------------- Constants
 
     /**
      * Default factory for this reference.
      */
     public static final String DEFAULT_FACTORY =
-            org.apache.naming.factory.Constants.DEFAULT_RESOURCE_FACTORY;
+        org.apache.naming.factory.Constants.DEFAULT_RESOURCE_FACTORY;
 
 
     /**
@@ -58,16 +67,15 @@ public class ResourceRef extends AbstractRef {
      */
     public static final String SINGLETON = "singleton";
 
+    // ----------------------------------------------------------- Constructors
+
 
     /**
      * Resource Reference.
      *
      * @param resourceClass Resource class
-     * @param description Description of the resource
      * @param scope Resource scope
      * @param auth Resource authentication
-     * @param singleton Is this resource a singleton (every lookup should return
-     *                  the same instance rather than a new instance)?
      */
     public ResourceRef(String resourceClass, String description,
                        String scope, String auth, boolean singleton) {
@@ -79,14 +87,8 @@ public class ResourceRef extends AbstractRef {
      * Resource Reference.
      *
      * @param resourceClass Resource class
-     * @param description Description of the resource
      * @param scope Resource scope
      * @param auth Resource authentication
-     * @param singleton Is this resource a singleton (every lookup should return
-     *                  the same instance rather than a new instance)?
-     * @param factory The possibly null class name of the object's factory.
-     * @param factoryLocation The possibly null location from which to load the
-     *                        factory (e.g. URL)
      */
     public ResourceRef(String resourceClass, String description,
                        String scope, String auth, boolean singleton,
@@ -111,8 +113,64 @@ public class ResourceRef extends AbstractRef {
     }
 
 
+    // ----------------------------------------------------- Instance Variables
+
+
+    // ------------------------------------------------------ Reference Methods
+
+
+    /**
+     * Retrieves the class name of the factory of the object to which this
+     * reference refers.
+     */
     @Override
-    protected String getDefaultFactoryClassName() {
-        return DEFAULT_FACTORY;
+    public String getFactoryClassName() {
+        String factory = super.getFactoryClassName();
+        if (factory != null) {
+            return factory;
+        } else {
+            factory = System.getProperty(Context.OBJECT_FACTORIES);
+            if (factory != null) {
+                return null;
+            } else {
+                return DEFAULT_FACTORY;
+            }
+        }
     }
+
+
+    // --------------------------------------------------------- Public Methods
+
+
+    /**
+     * Return a String rendering of this object.
+     */
+    @Override
+    public String toString() {
+
+        StringBuilder sb = new StringBuilder("ResourceRef[");
+        sb.append("className=");
+        sb.append(getClassName());
+        sb.append(",factoryClassLocation=");
+        sb.append(getFactoryClassLocation());
+        sb.append(",factoryClassName=");
+        sb.append(getFactoryClassName());
+        Enumeration<RefAddr> refAddrs = getAll();
+        while (refAddrs.hasMoreElements()) {
+            RefAddr refAddr = refAddrs.nextElement();
+            sb.append(",{type=");
+            sb.append(refAddr.getType());
+            sb.append(",content=");
+            sb.append(refAddr.getContent());
+            sb.append("}");
+        }
+        sb.append("]");
+        return (sb.toString());
+
+    }
+
+
+    // ------------------------------------------------------------- Properties
+
+
 }

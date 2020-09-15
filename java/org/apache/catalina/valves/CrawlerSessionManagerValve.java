@@ -40,19 +40,20 @@ import org.apache.juli.logging.LogFactory;
  * users - regardless of whether or not they provide a session token with their
  * requests.
  */
-public class CrawlerSessionManagerValve extends ValveBase implements HttpSessionBindingListener {
+public class CrawlerSessionManagerValve extends ValveBase
+        implements HttpSessionBindingListener {
 
-    private static final Log log = LogFactory.getLog(CrawlerSessionManagerValve.class);
+    private static final Log log =
+        LogFactory.getLog(CrawlerSessionManagerValve.class);
 
-    private final Map<String, String> clientIpSessionId = new ConcurrentHashMap<>();
-    private final Map<String, String> sessionIdClientIp = new ConcurrentHashMap<>();
+    private final Map<String,String> clientIpSessionId =
+            new ConcurrentHashMap<>();
+    private final Map<String,String> sessionIdClientIp =
+            new ConcurrentHashMap<>();
 
-    private String crawlerUserAgents = ".*[bB]ot.*|.*Yahoo! Slurp.*|.*Feedfetcher-Google.*";
+    private String crawlerUserAgents =
+        ".*[bB]ot.*|.*Yahoo! Slurp.*|.*Feedfetcher-Google.*";
     private Pattern uaPattern = null;
-
-    private String crawlerIps = null;
-    private Pattern ipPattern = null;
-
     private int sessionInactiveInterval = 60;
 
 
@@ -90,31 +91,6 @@ public class CrawlerSessionManagerValve extends ValveBase implements HttpSession
 
 
     /**
-     * Specify the regular expression (using {@link Pattern}) that will be used
-     * to identify crawlers based on their IP address. The default is no crawler
-     * IPs.
-     *
-     * @param crawlerIps The regular expression using {@link Pattern}
-     */
-    public void setCrawlerIps(String crawlerIps) {
-        this.crawlerIps = crawlerIps;
-        if (crawlerIps == null || crawlerIps.length() == 0) {
-            ipPattern = null;
-        } else {
-            ipPattern = Pattern.compile(crawlerIps);
-        }
-    }
-
-    /**
-     * @see #setCrawlerIps(String)
-     * @return The current regular expression being used to match IP addresses.
-     */
-    public String getCrawlerIps() {
-        return crawlerIps;
-    }
-
-
-    /**
      * Specify the session timeout (in seconds) for a crawler's session. This is
      * typically lower than that for a user session. The default is 60 seconds.
      *
@@ -133,7 +109,7 @@ public class CrawlerSessionManagerValve extends ValveBase implements HttpSession
     }
 
 
-    public Map<String, String> getClientIpSessionId() {
+    public Map<String,String> getClientIpSessionId() {
         return clientIpSessionId;
     }
 
@@ -147,15 +123,17 @@ public class CrawlerSessionManagerValve extends ValveBase implements HttpSession
 
 
     @Override
-    public void invoke(Request request, Response response) throws IOException, ServletException {
+    public void invoke(Request request, Response response) throws IOException,
+            ServletException {
 
         boolean isBot = false;
         String sessionId = null;
-        String clientIp = request.getRemoteAddr();
+        String clientIp = null;
 
         if (log.isDebugEnabled()) {
-            log.debug(request.hashCode() + ": ClientIp=" + clientIp + ", RequestedSessionId="
-                    + request.getRequestedSessionId());
+            log.debug(request.hashCode() + ": ClientIp=" +
+                    request.getRemoteAddr() + ", RequestedSessionId=" +
+                    request.getRequestedSessionId());
         }
 
         // If the incoming request has a valid session ID, no action is required
@@ -179,26 +157,21 @@ public class CrawlerSessionManagerValve extends ValveBase implements HttpSession
                     isBot = true;
 
                     if (log.isDebugEnabled()) {
-                        log.debug(request.hashCode() + ": Bot found. UserAgent=" + uaHeader);
+                        log.debug(request.hashCode() +
+                                ": Bot found. UserAgent=" + uaHeader);
                     }
-                }
-            }
-
-            if (ipPattern != null && ipPattern.matcher(clientIp).matches()) {
-                isBot = true;
-
-                if (log.isDebugEnabled()) {
-                    log.debug(request.hashCode() + ": Bot found. IP=" + clientIp);
                 }
             }
 
             // If this is a bot, is the session ID known?
             if (isBot) {
+                clientIp = request.getRemoteAddr();
                 sessionId = clientIpSessionId.get(clientIp);
                 if (sessionId != null) {
                     request.setRequestedSessionId(sessionId);
                     if (log.isDebugEnabled()) {
-                        log.debug(request.hashCode() + ": SessionID=" + sessionId);
+                        log.debug(request.hashCode() + ": SessionID=" +
+                                sessionId);
                     }
                 }
             }
@@ -218,16 +191,23 @@ public class CrawlerSessionManagerValve extends ValveBase implements HttpSession
                     s.setMaxInactiveInterval(sessionInactiveInterval);
 
                     if (log.isDebugEnabled()) {
-                        log.debug(request.hashCode() + ": New bot session. SessionID=" + s.getId());
+                        log.debug(request.hashCode() +
+                                ": New bot session. SessionID=" + s.getId());
                     }
                 }
             } else {
                 if (log.isDebugEnabled()) {
-                    log.debug(
-                            request.hashCode() + ": Bot session accessed. SessionID=" + sessionId);
+                    log.debug(request.hashCode() +
+                            ": Bot session accessed. SessionID=" + sessionId);
                 }
             }
         }
+    }
+
+
+    @Override
+    public void valueBound(HttpSessionBindingEvent event) {
+        // NOOP
     }
 
 

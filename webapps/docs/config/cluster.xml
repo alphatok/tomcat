@@ -43,21 +43,6 @@
   making the configuration seem like a lot, but don't lose faith, instead you have a tremendous control
   over what is going on.</p>
 </section>
-<section name="Security">
-
-<p>The cluster implementation is written on the basis that a secure, trusted
-network is used for all of the cluster related network traffic. It is not safe
-to run a cluster on a insecure, untrusted network.</p>
-
-<p>There are many options for providing a secure, trusted network for use by a
-Tomcat cluster. These include:</p>
-<ul>
-  <li>private LAN</li>
-  <li>a Virtual Private Network (VPN)</li>
-  <li>IPSEC</li>
-</ul>
-
-</section>
 <section name="Engine vs Host placement">
   <p>
    You can place the <code>&lt;Cluster&gt;</code> element inside either the <code>&lt;Engine&gt;</code>
@@ -138,11 +123,11 @@ Tomcat cluster. These include:</p>
       <code>Channel.SEND_OPTIONS_SYNCHRONIZED_ACK = 0x0004</code><br/>
       <code>Channel.SEND_OPTIONS_ASYNCHRONOUS = 0x0008</code><br/>
       <code>Channel.SEND_OPTIONS_USE_ACK = 0x0002</code><br/>
-      So to use ACK and ASYNC messaging, the flag would be <code>10</code> (8+2)
-      <br/>
+      So to use ACK and ASYNC messaging, the flag would be <code>10 (8+2) or 0x000B</code><br/>
       Note that if you use ASYNC messaging it is possible for update messages
       for a session to be processed by the receiving nodes in a different order
-      to the order in which they were sent.</p>
+      to the order in which they were sent.
+      </p>
     </attribute>
     <attribute name="channelStartOptions" required="false">
       <p>Sets the start and stop flags for the &lt;Channel&gt; object used by the cluster.
@@ -167,6 +152,21 @@ Tomcat cluster. These include:</p>
     <attribute name="notifyLifecycleListenerOnFailure" required="false">
       <p>Flag whether notify LifecycleListeners if all ClusterListener couldn't accept channel message.
          Default value is false.
+      </p>
+    </attribute>
+
+    <attribute name="doClusterLog" required="false">
+      <p><b>Deprecated since 6.0.0</b></p>
+      <p>Possible values are <code>true</code> or <code>false</code><br/>
+         Value is inherited from Tomcat 5.5 and has no official meaning.
+         to configure logging, use the standard tomcat logging configuration.
+      </p>
+    </attribute>
+    <attribute name="clusterLogName" required="false">
+      <p><b>Deprecated since 6.0.0</b></p>
+      <p>
+        Value is inherited from Tomcat 5.5 and has no official meaning.
+         to configure logging, use the standard tomcat logging configuration.
       </p>
     </attribute>
   </attributes>

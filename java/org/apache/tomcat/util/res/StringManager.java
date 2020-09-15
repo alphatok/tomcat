@@ -14,6 +14,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package org.apache.tomcat.util.res;
 
 import java.text.MessageFormat;
@@ -39,7 +40,7 @@ import java.util.ResourceBundle;
  * the package name given plus the suffix of "LocalStrings". In
  * practice, this means that the localized information will be contained
  * in a LocalStrings.properties file located in the package
- * directory of the class path.
+ * directory of the classpath.
  *
  * <p>Please see the documentation for java.util.ResourceBundle for
  * more information.
@@ -59,7 +60,6 @@ public class StringManager {
     private final ResourceBundle bundle;
     private final Locale locale;
 
-
     /**
      * Creates a new StringManager for a given package. This is a
      * private method and all access to it is arbitrated by the
@@ -73,15 +73,15 @@ public class StringManager {
         ResourceBundle bnd = null;
         try {
             bnd = ResourceBundle.getBundle(bundleName, locale);
-        } catch (MissingResourceException ex) {
+        } catch( MissingResourceException ex ) {
             // Try from the current loader (that's the case for trusted apps)
             // Should only be required if using a TC5 style classloader structure
             // where common != shared != server
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            if (cl != null) {
+            if( cl != null ) {
                 try {
                     bnd = ResourceBundle.getBundle(bundleName, locale, cl);
-                } catch (MissingResourceException ex2) {
+                } catch(MissingResourceException ex2) {
                     // Ignore
                 }
             }
@@ -100,21 +100,19 @@ public class StringManager {
         }
     }
 
-
     /**
-     * Get a string from the underlying resource bundle or return null if the
-     * String is not found.
-     *
-     * @param key to desired resource String
-     *
-     * @return resource String matching <i>key</i> from underlying bundle or
-     *         null if not found.
-     *
-     * @throws IllegalArgumentException if <i>key</i> is null
+        Get a string from the underlying resource bundle or return
+        null if the String is not found.
+
+        @param key to desired resource String
+        @return resource String matching <i>key</i> from underlying
+                bundle or null if not found.
+        @throws IllegalArgumentException if <i>key</i> is null.
      */
     public String getString(String key) {
-        if (key == null){
+        if(key == null){
             String msg = "key may not have a null value";
+
             throw new IllegalArgumentException(msg);
         }
 
@@ -125,7 +123,7 @@ public class StringManager {
             if (bundle != null) {
                 str = bundle.getString(key);
             }
-        } catch (MissingResourceException mre) {
+        } catch(MissingResourceException mre) {
             //bad: shouldn't mask an exception the following way:
             //   str = "[cannot find message associated with key '" + key +
             //         "' due to " + mre + "]";
@@ -143,16 +141,12 @@ public class StringManager {
         return str;
     }
 
-
     /**
      * Get a string from the underlying resource bundle and format
      * it with the given set of arguments.
      *
-     * @param key  The key for the required message
-     * @param args The values to insert into the message
-     *
-     * @return The request string formatted with the provided arguments or the
-     *         key if the key was not found.
+     * @param key
+     * @param args
      */
     public String getString(final String key, final Object... args) {
         String value = getString(key);
@@ -165,16 +159,12 @@ public class StringManager {
         return mf.format(args, new StringBuffer(), null).toString();
     }
 
-
     /**
-     * Identify the Locale this StringManager is associated with.
-     *
-     * @return The Locale associated with the StringManager
+     * Identify the Locale this StringManager is associated with
      */
     public Locale getLocale() {
         return locale;
     }
-
 
     // --------------------------------------------------------------
     // STATIC SUPPORT METHODS
@@ -183,36 +173,17 @@ public class StringManager {
     private static final Map<String, Map<Locale,StringManager>> managers =
             new Hashtable<>();
 
-
-    /**
-     * Get the StringManager for a given class. The StringManager will be
-     * returned for the package in which the class is located. If a manager for
-     * that package already exists, it will be reused, else a new
-     * StringManager will be created and returned.
-     *
-     * @param clazz The class for which to retrieve the StringManager
-     *
-     * @return The instance associated with the package of the provide class
-     */
-    public static final StringManager getManager(Class<?> clazz) {
-        return getManager(clazz.getPackage().getName());
-    }
-
-
     /**
      * Get the StringManager for a particular package. If a manager for
      * a package already exists, it will be reused, else a new
      * StringManager will be created and returned.
      *
      * @param packageName The package name
-     *
-     * @return The instance associated with the given package and the default
-     *         Locale
      */
-    public static final StringManager getManager(String packageName) {
+    public static final synchronized StringManager getManager(
+            String packageName) {
         return getManager(packageName, Locale.getDefault());
     }
-
 
     /**
      * Get the StringManager for a particular package and Locale. If a manager
@@ -221,8 +192,6 @@ public class StringManager {
      *
      * @param packageName The package name
      * @param locale      The Locale
-     *
-     * @return The instance associated with the given package and Locale
      */
     public static final synchronized StringManager getManager(
             String packageName, Locale locale) {
@@ -259,14 +228,11 @@ public class StringManager {
         return mgr;
     }
 
-
     /**
      * Retrieve the StringManager for a list of Locales. The first StringManager
      * found will be returned.
      *
-     * @param packageName      The package for which the StringManager was
-     *                         requested
-     * @param requestedLocales The list of Locales
+     * @param requestedLocales the list of Locales
      *
      * @return the found StringManager or the default StringManager
      */

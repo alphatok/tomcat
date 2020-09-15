@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.juli;
 
 import java.io.PrintWriter;
@@ -25,7 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Formatter;
-import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 
 /**
@@ -38,8 +38,9 @@ import java.util.logging.LogRecord;
  */
 public class OneLineFormatter extends Formatter {
 
-    private static final String ST_SEP = System.lineSeparator() + " ";
-    private static final String UNKNOWN_THREAD_NAME = "Unknown thread with ID ";
+    private static final String LINE_SEP = System.getProperty("line.separator");
+    private static final String ST_SEP = LINE_SEP + " ";
+    private static final String UNKONWN_THREAD_NAME = "Unknown thread with ID ";
     private static final Object threadMxBeanLock = new Object();
     private static volatile ThreadMXBean threadMxBean = null;
     private static final int THREAD_NAME_CACHE_SIZE = 10000;
@@ -62,7 +63,7 @@ public class OneLineFormatter extends Formatter {
     };
 
     /* Timestamp format */
-    private static final String DEFAULT_TIME_FORMAT = "dd-MMM-yyyy HH:mm:ss";
+    private static final String timeFormat = "dd-MMM-yyyy HH:mm:ss";
 
     /**
      * The size of our global date format cache
@@ -75,47 +76,21 @@ public class OneLineFormatter extends Formatter {
     private static final int localCacheSize = 5;
 
     /**
+     * Global date format cache.
+     */
+    private static final DateFormatCache globalDateCache =
+            new DateFormatCache(globalCacheSize, timeFormat, null);
+
+    /**
      * Thread local date format cache.
      */
-    private ThreadLocal<DateFormatCache> localDateCache;
-
-
-    public OneLineFormatter() {
-        String timeFormat = LogManager.getLogManager().getProperty(
-                OneLineFormatter.class.getName() + ".timeFormat");
-        if (timeFormat == null) {
-            timeFormat = DEFAULT_TIME_FORMAT;
+    private static final ThreadLocal<DateFormatCache> localDateCache =
+            new ThreadLocal<DateFormatCache>() {
+        @Override
+        protected DateFormatCache initialValue() {
+            return new DateFormatCache(localCacheSize, timeFormat, globalDateCache);
         }
-        setTimeFormat(timeFormat);
-    }
-
-
-    /**
-     * Specify the time format to use for time stamps in log messages.
-     *
-     * @param timeFormat The format to use using the
-     *                   {@link java.text.SimpleDateFormat} syntax
-     */
-    public void setTimeFormat(String timeFormat) {
-        DateFormatCache globalDateCache = new DateFormatCache(globalCacheSize, timeFormat, null);
-        localDateCache = new ThreadLocal<DateFormatCache>() {
-            @Override
-            protected DateFormatCache initialValue() {
-                return new DateFormatCache(localCacheSize, timeFormat, globalDateCache);
-            }
-        };
-    }
-
-
-    /**
-     * Obtain the format currently being used for time stamps in log messages.
-     *
-     * @return The current format in {@link java.text.SimpleDateFormat} syntax
-     */
-    public String getTimeFormat() {
-        return localDateCache.get().getTimeFormat();
-    }
-
+    };
 
     @Override
     public String format(LogRecord record) {
@@ -126,7 +101,7 @@ public class OneLineFormatter extends Formatter {
 
         // Severity
         sb.append(' ');
-        sb.append(record.getLevel().getLocalizedName());
+        sb.append(record.getLevel());
 
         // Thread
         sb.append(' ');
@@ -161,7 +136,7 @@ public class OneLineFormatter extends Formatter {
         }
 
         // New line for next record
-        sb.append(System.lineSeparator());
+        sb.append(LINE_SEP);
 
         return sb.toString();
     }
@@ -204,7 +179,7 @@ public class OneLineFormatter extends Formatter {
         }
 
         if (logRecordThreadId > Integer.MAX_VALUE / 2) {
-            result = UNKNOWN_THREAD_NAME + logRecordThreadId;
+            result = UNKONWN_THREAD_NAME + logRecordThreadId;
         } else {
             // Double checked locking OK as threadMxBean is volatile
             if (threadMxBean == null) {

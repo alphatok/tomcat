@@ -16,7 +16,6 @@
  */
 package org.apache.coyote.ajp;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +28,6 @@ import java.util.List;
 public class TesterAjpMessage extends AjpMessage {
 
     private final List<Header> headers = new ArrayList<>();
-    private final List<Attribute> attributes = new ArrayList<>();
 
 
     public TesterAjpMessage(int packetSize) {
@@ -87,16 +85,6 @@ public class TesterAjpMessage extends AjpMessage {
     }
 
 
-    public void addAttribute(int code, String value) {
-        attributes.add(new Attribute(code, value));
-    }
-
-
-    public void addAttribute(String name, String value) {
-        attributes.add(new Attribute(name, value));
-    }
-
-
     @Override
     public void end() {
         // Add the header count
@@ -104,10 +92,6 @@ public class TesterAjpMessage extends AjpMessage {
 
         for (Header header : headers) {
             header.append(this);
-        }
-
-        for (Attribute attribute : attributes) {
-            attribute.append(this);
         }
 
         // Terminator
@@ -130,10 +114,6 @@ public class TesterAjpMessage extends AjpMessage {
     }
 
 
-    public void appendString(String string) {
-        byte[] bytes = string.getBytes(StandardCharsets.ISO_8859_1);
-        appendBytes(bytes, 0, bytes.length);
-    }
 
 
     private static class Header {
@@ -158,35 +138,6 @@ public class TesterAjpMessage extends AjpMessage {
                 message.appendString(name);
             } else {
                 message.appendInt(code);
-            }
-            message.appendString(value);
-        }
-    }
-
-
-    private static class Attribute {
-        private final int code;
-        private final String name;
-        private final String value;
-
-        public Attribute(int code, String value) {
-            this.code = code;
-            this.name = null;
-            this.value = value;
-        }
-
-        public Attribute(String name, String value) {
-            this.code = 0;
-            this.name = name;
-            this.value = value;
-        }
-
-        public void append(TesterAjpMessage message) {
-            if (code == 0) {
-                message.appendByte(0x0A);
-                message.appendString(name);
-            } else {
-                message.appendByte(code);
             }
             message.appendString(value);
         }

@@ -19,8 +19,6 @@ package org.apache.tomcat.util.descriptor.web;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -43,7 +41,7 @@ public class ContextHandler extends ResourceBase {
     private String handlerclass = null;
 
     public String getHandlerclass() {
-        return this.handlerclass;
+        return (this.handlerclass);
     }
 
     public void setHandlerclass(String handlerclass) {
@@ -52,14 +50,14 @@ public class ContextHandler extends ResourceBase {
 
     /**
      * A list of QName specifying the SOAP Headers the handler will work on.
-     * -namespace and localpart values must be found inside the WSDL.
+     * -namespace and locapart values must be found inside the WSDL.
      *
      * A service-qname is composed by a namespaceURI and a localpart.
      *
      * soapHeader[0] : namespaceURI
      * soapHeader[1] : localpart
      */
-    private final Map<String, String> soapHeaders = new HashMap<>();
+    private final HashMap<String, String> soapHeaders = new HashMap<>();
 
     public Iterator<String> getLocalparts() {
         return soapHeaders.keySet().iterator();
@@ -75,8 +73,6 @@ public class ContextHandler extends ResourceBase {
 
     /**
      * Set a configured property.
-     * @param name The property name
-     * @param value The property value
      */
     public void setProperty(String name, String value) {
         this.setProperty(name, (Object) value);
@@ -85,7 +81,7 @@ public class ContextHandler extends ResourceBase {
     /**
      * The soapRole.
      */
-    private final List<String> soapRoles = new ArrayList<>();
+    private final ArrayList<String> soapRoles = new ArrayList<>();
 
     public String getSoapRole(int i) {
         return this.soapRoles.get(i);
@@ -102,7 +98,7 @@ public class ContextHandler extends ResourceBase {
     /**
      * The portName.
      */
-    private final List<String> portNames = new ArrayList<>();
+    private final ArrayList<String> portNames = new ArrayList<>();
 
     public String getPortName(int i) {
         return this.portNames.get(i);
@@ -149,7 +145,7 @@ public class ContextHandler extends ResourceBase {
             sb.append(this.listProperties());
         }
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
     }
 
 

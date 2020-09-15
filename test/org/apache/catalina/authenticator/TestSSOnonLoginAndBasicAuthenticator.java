@@ -99,8 +99,9 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
 
     // now compute some delays - beware of the units!
     private static final int EXTRA_DELAY_SECS = 5;
-    private static final int TIMEOUT_WAIT_SECS =  EXTRA_DELAY_SECS +
-            (MANAGER_SCAN_INTERVAL_SECS * MANAGER_EXPIRE_SESSIONS_FAST) * 5;
+    private static final long REASONABLE_MSECS_TO_EXPIRY =
+            (((MANAGER_SCAN_INTERVAL_SECS * MANAGER_EXPIRE_SESSIONS_FAST)
+                    + EXTRA_DELAY_SECS) * 1000);
 
     private static final String CLIENT_AUTH_HEADER = "authorization";
     private static final String SERVER_AUTH_HEADER = "WWW-Authenticate";
@@ -166,7 +167,7 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
      * Wait until the SSO session times-out, then try to re-access
      * the resource. This should be rejected with SC_FORBIDDEN 401 status.
      *
-     * Note: this test should run for ~10 seconds.
+     * Note: this test will run for slightly more than 1 minute.
      */
     @Test
     public void testBasicAccessAndSessionTimeout() throws Exception {
@@ -307,9 +308,9 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
      * Finally, wait for the non-login session to expire and try again..
      * This should be rejected with SC_FORBIDDEN 403 status.
      *
-     * (see bugfix https://bz.apache.org/bugzilla/show_bug.cgi?id=52303)
+     * (see bugfix https://issues.apache.org/bugzilla/show_bug.cgi?id=52303)
      *
-     * Note: this test should run for ~20 seconds.
+     * Note: this test will run for slightly more than 3 minutes.
      */
     @Test
     public void testBasicExpiredAcceptProtectedWithCookies() throws Exception {
@@ -355,7 +356,7 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         Map<String,List<String>> respHeaders = new HashMap<>();
 
         if (useCookie && (cookies != null)) {
-            addCookies(reqHeaders);
+            reqHeaders.put(CLIENT_COOKIE_HEADER + ":", cookies);
         }
 
         ByteChunk bc = new ByteChunk();
@@ -379,7 +380,7 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         Map<String,List<String>> respHeaders = new HashMap<>();
 
         if (useCookie && (cookies != null)) {
-            addCookies(reqHeaders);
+            reqHeaders.put(CLIENT_COOKIE_HEADER + ":", cookies);
         }
         else {
             if (credentials != null) {
@@ -401,7 +402,7 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
                 boolean methodFound = false;
                 List<String> authHeaders = respHeaders.get(SERVER_AUTH_HEADER);
                 for (String authHeader : authHeaders) {
-                    if (authHeader.contains(NICE_METHOD)) {
+                    if (authHeader.indexOf(NICE_METHOD) > -1) {
                         methodFound = true;
                         break;
                     }
@@ -484,10 +485,10 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         // Add protected servlet to the context
         Tomcat.addServlet(nonloginContext, "TesterServlet1",
                 new TesterServletEncodeUrl());
-        nonloginContext.addServletMappingDecoded(URI_PROTECTED, "TesterServlet1");
+        nonloginContext.addServletMapping(URI_PROTECTED, "TesterServlet1");
 
         SecurityCollection collection1 = new SecurityCollection();
-        collection1.addPatternDecoded(URI_PROTECTED);
+        collection1.addPattern(URI_PROTECTED);
         SecurityConstraint sc1 = new SecurityConstraint();
         sc1.addAuthRole(ROLE);
         sc1.addCollection(collection1);
@@ -496,10 +497,10 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         // Add unprotected servlet to the context
         Tomcat.addServlet(nonloginContext, "TesterServlet2",
                 new TesterServletEncodeUrl());
-        nonloginContext.addServletMappingDecoded(URI_PUBLIC, "TesterServlet2");
+        nonloginContext.addServletMapping(URI_PUBLIC, "TesterServlet2");
 
         SecurityCollection collection2 = new SecurityCollection();
-        collection2.addPatternDecoded(URI_PUBLIC);
+        collection2.addPattern(URI_PUBLIC);
         SecurityConstraint sc2 = new SecurityConstraint();
         // do not add a role - which signals access permitted without one
         sc2.addCollection(collection2);
@@ -523,9 +524,9 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         // Add protected servlet to the context
         Tomcat.addServlet(basicContext, "TesterServlet3",
                 new TesterServletEncodeUrl());
-        basicContext.addServletMappingDecoded(URI_PROTECTED, "TesterServlet3");
+        basicContext.addServletMapping(URI_PROTECTED, "TesterServlet3");
         SecurityCollection collection = new SecurityCollection();
-        collection.addPatternDecoded(URI_PROTECTED);
+        collection.addPattern(URI_PROTECTED);
         SecurityConstraint sc = new SecurityConstraint();
         sc.addAuthRole(ROLE);
         sc.addCollection(collection);
@@ -534,9 +535,9 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
         // Add unprotected servlet to the context
         Tomcat.addServlet(basicContext, "TesterServlet4",
                 new TesterServletEncodeUrl());
-        basicContext.addServletMappingDecoded(URI_PUBLIC, "TesterServlet4");
+        basicContext.addServletMapping(URI_PUBLIC, "TesterServlet4");
         SecurityCollection collection2 = new SecurityCollection();
-        collection2.addPatternDecoded(URI_PUBLIC);
+        collection2.addPattern(URI_PUBLIC);
         SecurityConstraint sc2 = new SecurityConstraint();
         // do not add a role - which signals access permitted without one
         sc2.addCollection(collection2);
@@ -554,36 +555,18 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
      * extract and save the server cookies from the incoming response
      */
     protected void saveCookies(Map<String,List<String>> respHeaders) {
+
         // we only save the Cookie values, not header prefix
-        List<String> cookieHeaders = respHeaders.get(SERVER_COOKIE_HEADER);
-        if (cookieHeaders == null) {
-            cookies = null;
-        } else {
-            cookies = new ArrayList<>(cookieHeaders.size());
-            for (String cookieHeader : cookieHeaders) {
-                cookies.add(cookieHeader.substring(0, cookieHeader.indexOf(';')));
-            }
-        }
+        cookies = respHeaders.get(SERVER_COOKIE_HEADER);
     }
 
     /*
      * add all saved cookies to the outgoing request
      */
     protected void addCookies(Map<String,List<String>> reqHeaders) {
+
         if ((cookies != null) && (cookies.size() > 0)) {
-            StringBuilder cookieHeader = new StringBuilder();
-            boolean first = true;
-            for (String cookie : cookies) {
-                if (!first) {
-                    cookieHeader.append(';');
-                } else {
-                    first = false;
-                }
-                cookieHeader.append(cookie);
-            }
-            List<String> cookieHeaderList = new ArrayList<>(1);
-            cookieHeaderList.add(cookieHeader.toString());
-            reqHeaders.put(CLIENT_COOKIE_HEADER, cookieHeaderList);
+            reqHeaders.put(CLIENT_COOKIE_HEADER + ":", cookies);
         }
     }
 
@@ -618,27 +601,13 @@ public class TestSSOnonLoginAndBasicAuthenticator extends TomcatBaseTest {
                 // leave it to be expired by the manager
             }
         }
-
-
         try {
-            Thread.sleep(EXTRA_DELAY_SECS * 1000);
+            Thread.sleep(REASONABLE_MSECS_TO_EXPIRY);
         } catch (InterruptedException ie) {
             // ignored
         }
 
-        // Paranoid verification that active sessions have now gone
-        int count = 0;
-        sessions = manager.findSessions();
-        while (sessions.length != 0 && count < TIMEOUT_WAIT_SECS) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                // Ignore
-            }
-            sessions = manager.findSessions();
-            count++;
-        }
-
+        // paranoid verification that active sessions have now gone
         sessions = manager.findSessions();
         assertTrue(sessions.length == 0);
     }

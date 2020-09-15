@@ -36,20 +36,23 @@ import org.apache.catalina.tribes.transport.AbstractSender;
 import org.apache.catalina.tribes.transport.MultiPointSender;
 import org.apache.catalina.tribes.transport.SenderState;
 import org.apache.catalina.tribes.util.Logs;
-import org.apache.catalina.tribes.util.StringManager;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 public class ParallelNioSender extends AbstractSender implements MultiPointSender {
 
     private static final Log log = LogFactory.getLog(ParallelNioSender.class);
-    protected static final StringManager sm = StringManager.getManager(ParallelNioSender.class);
     protected final long selectTimeout = 5000; //default 5 seconds, same as send timeout
     protected final Selector selector;
     protected final HashMap<Member, NioSender> nioSenders = new HashMap<>();
 
     public ParallelNioSender() throws IOException {
-        selector = Selector.open();
+        synchronized (Selector.class) {
+            // Selector.open() isn't thread safe
+            // http://bugs.sun.com/view_bug.do?bug_id=6427854
+            // Affects 1.6.0_29, fixed in 1.7.0_01
+            selector = Selector.open();
+        }
         setConnected(true);
     }
 
@@ -79,7 +82,7 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                     int faulty = (cx == null)?0:cx.getFaultyMembers().length;
                     if ( cx == null ) {
                         if ( x instanceof ChannelException ) cx = (ChannelException)x;
-                        else cx = new ChannelException(sm.getString("parallelNioSender.send.failed"), x);
+                        else cx = new ChannelException("Parallel NIO send failed.", x);
                     } else {
                         if (x instanceof ChannelException) {
                             cx.addFaultyMember(((ChannelException) x).getFaultyMembers());
@@ -96,12 +99,10 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
             }
             if ( remaining > 0 ) {
                 //timeout has occurred
-                ChannelException cxtimeout = new ChannelException(sm.getString(
-                        "parallelNioSender.operation.timedout", Long.toString(getTimeout())));
-                if (cx == null) {
-                    cx = new ChannelException(sm.getString("parallelNioSender.operation.timedout",
-                            Long.toString(getTimeout())));
-                }
+                ChannelException cxtimeout = new ChannelException(
+                        "Operation has timed out(" + getTimeout() + " ms.).");
+                if ( cx==null ) cx = new ChannelException(
+                        "Operation has timed out(" + getTimeout() + " ms.).");
                 for (int i=0; i<senders.length; i++ ) {
                     if (!senders[i].isComplete()) {
                         cx.addFaultyMember(senders[i].getDestination(),cxtimeout);
@@ -163,14 +164,20 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                     if (state.isReady()) {
                         state.setSuspect();
                         if ( retry )
-                            log.warn(sm.getString("parallelNioSender.send.fail.retrying", sender.getDestination().getName()));
+                            log.warn("Member send is failing for:" +
+                                    sender.getDestination().getName() +
+                                    " ; Setting to suspect and retrying.");
                         else
-                            log.warn(sm.getString("parallelNioSender.send.fail", sender.getDestination().getName()), x);
+                            log.warn("Member send is failing for:" +
+                                    sender.getDestination().getName() +
+                                    " ; Setting to suspect.", x);
                     }
                 }
                 if ( !isConnected() ) {
-                    log.warn(sm.getString("parallelNioSender.sender.disconnected.notRetry", sender.getDestination().getName()));
-                    ChannelException cx = new ChannelException(sm.getString("parallelNioSender.sender.disconnected.sendFailed"), x);
+                    log.warn("Not retrying send for:" + sender.getDestination().getName() +
+                            "; Sender is disconnected.");
+                    ChannelException cx = new ChannelException(
+                            "Send failed, and sender is disconnected. Not retrying.", x);
                     cx.addFaultyMember(sender.getDestination(),x);
                     throw cx;
                 }
@@ -187,9 +194,8 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                     }
                 } else {
                     ChannelException cx = new ChannelException(
-                            sm.getString("parallelNioSender.sendFailed.attempt",
-                                    Integer.toString(sender.getAttempt()),
-                                    Integer.toString(maxAttempts)), x);
+                            "Send failed, attempt:" + sender.getAttempt() + " max:" + maxAttempts,
+                            x);
                     cx.addFaultyMember(sender.getDestination(),x);
                     throw cx;
                 }//end if
@@ -244,7 +250,7 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                 sender.setUdpBased(isUdpBased());
                 result[i] = sender;
             }catch ( UnknownHostException x ) {
-                if (cx == null) cx = new ChannelException(sm.getString("parallelNioSender.unable.setup.NioSender"), x);
+                if (cx == null) cx = new ChannelException("Unable to setup NioSender.", x);
                 cx.addFaultyMember(destination[i], x);
             }
         }
@@ -296,7 +302,7 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
     }
 
     @Override
-    public void finalize() throws Throwable {
+    public void finalize() {
         try {disconnect(); }catch ( Exception e){/*Ignore*/}
         try {
             selector.close();
@@ -305,7 +311,6 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                 log.debug("Failed to close selector", e);
             }
         }
-        super.finalize();
     }
 
     @Override
@@ -328,7 +333,7 @@ public class ParallelNioSender extends AbstractSender implements MultiPointSende
                     i.remove();
                     result = true;
                 }catch ( Exception x ) {
-                    log.warn(sm.getString("parallelNioSender.error.keepalive", sender),x);
+                    log.warn("Error during keepalive test for sender:"+sender,x);
                 }
             }
         }

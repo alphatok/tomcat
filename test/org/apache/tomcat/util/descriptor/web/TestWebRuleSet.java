@@ -18,6 +18,7 @@ package org.apache.tomcat.util.descriptor.web;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 import static org.junit.Assert.assertEquals;
@@ -122,7 +123,7 @@ public class TestWebRuleSet {
     }
 
     private synchronized void parse(WebXml webXml, String target,
-            boolean fragment, boolean expected) {
+            boolean fragment, boolean expected) throws FileNotFoundException {
 
         Digester d;
         if (fragment) {
@@ -136,10 +137,11 @@ public class TestWebRuleSet {
         d.push(webXml);
 
         File f = new File("test/org/apache/catalina/startup/" + target);
+        InputStream is = new FileInputStream(f);
 
         boolean result = true;
 
-        try (InputStream is = new FileInputStream(f)) {
+        try {
             d.parse(is);
         } catch (Exception e) {
             if (expected) {

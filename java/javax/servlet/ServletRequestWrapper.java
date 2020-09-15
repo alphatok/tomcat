@@ -28,7 +28,7 @@ import java.util.Map;
  * class implements the Wrapper or Decorator pattern. Methods default to calling
  * through to the wrapped request object.
  *
- * @since Servlet 2.3
+ * @since v 2.3
  * @see javax.servlet.ServletRequest
  */
 public class ServletRequestWrapper implements ServletRequest {
@@ -37,9 +37,8 @@ public class ServletRequestWrapper implements ServletRequest {
     /**
      * Creates a ServletRequest adaptor wrapping the given request object.
      *
-     * @param request The request to wrap
-     *
-     * @throws IllegalArgumentException if the request is null
+     * @throws java.lang.IllegalArgumentException
+     *             if the request is null
      */
     public ServletRequestWrapper(ServletRequest request) {
         if (request == null) {
@@ -49,8 +48,7 @@ public class ServletRequestWrapper implements ServletRequest {
     }
 
     /**
-     * Get the wrapped request.
-     * @return the wrapped request object
+     * Return the wrapped request object.
      */
     public ServletRequest getRequest() {
         return this.request;
@@ -58,9 +56,9 @@ public class ServletRequestWrapper implements ServletRequest {
 
     /**
      * Sets the request object being wrapped.
-     * @param request The new wrapped request.
      *
-     * @throws IllegalArgumentException if the request is null.
+     * @throws java.lang.IllegalArgumentException
+     *             if the request is null.
      */
     public void setRequest(ServletRequest request) {
         if (request == null) {
@@ -115,12 +113,6 @@ public class ServletRequestWrapper implements ServletRequest {
         return this.request.getContentLength();
     }
 
-    /**
-     * The default behavior of this method is to return getContentLengthLong()
-     * on the wrapped request object.
-     *
-     * @since Servlet 3.1
-     */
     @Override
     public long getContentLengthLong() {
         return this.request.getContentLengthLong();
@@ -304,7 +296,8 @@ public class ServletRequestWrapper implements ServletRequest {
      * @deprecated As of Version 3.0 of the Java Servlet API
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("dep-ann")
+    // Spec API does not use @Deprecated
     public String getRealPath(String path) {
         return this.request.getRealPath(path);
     }
@@ -313,7 +306,7 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return getRemotePort() on the
      * wrapped request object.
      *
-     * @since Servlet 2.4
+     * @since 2.4
      */
     @Override
     public int getRemotePort() {
@@ -324,7 +317,7 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return getLocalName() on the
      * wrapped request object.
      *
-     * @since Servlet 2.4
+     * @since 2.4
      */
     @Override
     public String getLocalName() {
@@ -335,7 +328,7 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return getLocalAddr() on the
      * wrapped request object.
      *
-     * @since Servlet 2.4
+     * @since 2.4
      */
     @Override
     public String getLocalAddr() {
@@ -346,7 +339,7 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return getLocalPort() on the
      * wrapped request object.
      *
-     * @since Servlet 2.4
+     * @since 2.4
      */
     @Override
     public int getLocalPort() {
@@ -368,9 +361,7 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return startAsync() on the
      * wrapped request object.
      *
-     * @throws IllegalStateException If asynchronous processing is not supported
-     *         for this request or if the request is already in asynchronous
-     *         mode
+     * @throws java.lang.IllegalStateException
      * @since Servlet 3.0
      */
     @Override
@@ -382,13 +373,9 @@ public class ServletRequestWrapper implements ServletRequest {
      * The default behavior of this method is to return startAsync(Runnable) on
      * the wrapped request object.
      *
-     * @param servletRequest    The ServletRequest with which to initialise the
-     *                          asynchronous context
-     * @param servletResponse   The ServletResponse with which to initialise the
-     *                          asynchronous context
-     * @throws IllegalStateException If asynchronous processing is not supported
-     *         for this request or if the request is already in asynchronous
-     *         mode
+     * @param servletRequest
+     * @param servletResponse
+     * @throws java.lang.IllegalStateException
      * @since Servlet 3.0
      */
     @Override
@@ -431,12 +418,8 @@ public class ServletRequestWrapper implements ServletRequest {
     }
 
     /**
-     * TODO SERVLET3 - Add comments
-     * @param wrapped The request to compare to the wrapped request
-     * @return <code>true</code> if the request wrapped by this wrapper (or
-     *         series of wrappers) is the same as the supplied request,
-     *         otherwise <code>false</code>
-     * @since Servlet 3.0
+     * @param wrapped
+     * @since Servlet 3.0 TODO SERVLET3 - Add comments
      */
     public boolean isWrapperFor(ServletRequest wrapped) {
         if (request == wrapped) {
@@ -449,13 +432,8 @@ public class ServletRequestWrapper implements ServletRequest {
     }
 
     /**
-     * TODO SERVLET3 - Add comments
-     * @param wrappedType The class to compare to the class of the wrapped
-     *                    request
-     * @return <code>true</code> if the request wrapped by this wrapper (or
-     *         series of wrappers) is the same type as the supplied type,
-     *         otherwise <code>false</code>
-     * @since Servlet 3.0
+     * @param wrappedType
+     * @since Servlet 3.0 TODO SERVLET3 - Add comments
      */
     public boolean isWrapperFor(Class<?> wrappedType) {
         if (wrappedType.isAssignableFrom(request.getClass())) {

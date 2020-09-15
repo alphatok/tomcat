@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import org.apache.catalina.Context;
-import org.apache.catalina.loader.WebappClassLoaderBase;
+import org.apache.catalina.loader.WebappClassLoader;
 import org.apache.tomcat.util.buf.ByteChunk;
 
 public class TestTomcatClassLoader extends TomcatBaseTest {
@@ -40,11 +40,12 @@ public class TestTomcatClassLoader extends TomcatBaseTest {
     public void testDefaultClassLoader() throws Exception {
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
 
         Tomcat.addServlet(ctx, "ClassLoaderReport", new ClassLoaderReport(null));
-        ctx.addServletMappingDecoded("/", "ClassLoaderReport");
+        ctx.addServletMapping("/", "ClassLoaderReport");
 
         tomcat.start();
 
@@ -63,11 +64,12 @@ public class TestTomcatClassLoader extends TomcatBaseTest {
         Tomcat tomcat = getTomcatInstance();
         tomcat.getServer().setParentClassLoader(cl);
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
 
         Tomcat.addServlet(ctx, "ClassLoaderReport", new ClassLoaderReport(cl));
-        ctx.addServletMappingDecoded("/", "ClassLoaderReport");
+        ctx.addServletMapping("/", "ClassLoaderReport");
 
         tomcat.start();
 
@@ -98,7 +100,7 @@ public class TestTomcatClassLoader extends TomcatBaseTest {
                     out.print("SYSTEM,");
                 } else if (custom == cl) {
                     out.print("CUSTOM,");
-                } else if (cl instanceof WebappClassLoaderBase) {
+                } else if (cl instanceof WebappClassLoader) {
                     out.print("WEBAPP,");
                 } else {
                     out.print("OTHER,");

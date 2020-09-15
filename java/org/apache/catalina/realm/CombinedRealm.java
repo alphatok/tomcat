@@ -51,9 +51,13 @@ public class CombinedRealm extends RealmBase {
     protected final List<Realm> realms = new LinkedList<>();
 
     /**
+     * Descriptive information about this Realm implementation.
+     */
+    protected static final String name = "CombinedRealm";
+
+    /**
      * Add a realm to the list of realms that will be used to authenticate
      * users.
-     * @param theRealm realm which should be wrapped by the combined realm
      */
     public void addRealm(Realm theRealm) {
         realms.add(theRealm);
@@ -67,7 +71,7 @@ public class CombinedRealm extends RealmBase {
 
 
     /**
-     * @return the set of Realms that this Realm is wrapping
+     * Return the set of Realms that this Realm is wrapping
      */
     public ObjectName[] getRealms() {
         ObjectName[] result = new ObjectName[realms.size()];
@@ -81,7 +85,7 @@ public class CombinedRealm extends RealmBase {
     }
 
     /**
-     * @return the list of Realms contained by this Realm.
+     * Return the list of Realms contained by this Realm.
      */
     public Realm[] getNestedRealms() {
         return realms.toArray(new Realm[0]);
@@ -114,41 +118,6 @@ public class CombinedRealm extends RealmBase {
 
             authenticatedUser = realm.authenticate(username, clientDigest, nonce,
                     nc, cnonce, qop, realmName, md5a2);
-
-            if (authenticatedUser == null) {
-                if (log.isDebugEnabled()) {
-                    log.debug(sm.getString("combinedRealm.authFail", username,
-                            realm.getClass().getName()));
-                }
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug(sm.getString("combinedRealm.authSuccess",
-                            username, realm.getClass().getName()));
-                }
-                break;
-            }
-        }
-        return authenticatedUser;
-    }
-
-
-    /**
-     * Return the Principal associated with the specified user name otherwise
-     * return <code>null</code>.
-     *
-     * @param username User name of the Principal to look up
-     */
-    @Override
-    public Principal authenticate(String username) {
-        Principal authenticatedUser = null;
-
-        for (Realm realm : realms) {
-            if (log.isDebugEnabled()) {
-                log.debug(sm.getString("combinedRealm.authStart", username,
-                        realm.getClass().getName()));
-            }
-
-            authenticatedUser = realm.authenticate(username);
 
             if (authenticatedUser == null) {
                 if (log.isDebugEnabled()) {
@@ -288,17 +257,6 @@ public class CombinedRealm extends RealmBase {
         super.destroyInternal();
     }
 
-    /**
-     * Delegate the backgroundProcess call to all sub-realms.
-     */
-    @Override
-    public void backgroundProcess() {
-        super.backgroundProcess();
-
-        for (Realm r : realms) {
-            r.backgroundProcess();
-        }
-    }
 
     /**
      * Return the Principal associated with the specified chain of X509
@@ -387,6 +345,11 @@ public class CombinedRealm extends RealmBase {
     }
 
     @Override
+    protected String getName() {
+        return name;
+    }
+
+    @Override
     protected String getPassword(String username) {
         // This method should never be called
         // Stack trace will show where this was called from
@@ -406,17 +369,6 @@ public class CombinedRealm extends RealmBase {
                     sm.getString("combinedRealm.getPrincipal"));
         log.error(sm.getString("combinedRealm.unexpectedMethod"), uoe);
         throw uoe;
-    }
-
-
-    @Override
-    public boolean isAvailable() {
-        for (Realm realm : realms) {
-            if (!realm.isAvailable()) {
-                return false;
-            }
-        }
-        return true;
     }
 
 }

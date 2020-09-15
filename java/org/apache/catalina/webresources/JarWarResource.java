@@ -21,10 +21,11 @@ import java.io.InputStream;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 
+import org.apache.catalina.WebResourceRoot;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.util.buf.UriUtil;
 
 /**
  * Represents a single resource (file or directory) that is located within a
@@ -32,60 +33,53 @@ import org.apache.tomcat.util.buf.UriUtil;
  */
 public class JarWarResource extends AbstractArchiveResource {
 
-    private static final Log log = LogFactory.getLog(JarWarResource.class);
+    private static final Log log = LogFactory.getLog(JarResource.class);
 
     private final String archivePath;
 
-    public JarWarResource(AbstractArchiveResourceSet archiveResourceSet, String webAppPath,
-            String baseUrl, JarEntry jarEntry, String archivePath) {
-
-        super(archiveResourceSet, webAppPath,
-                "jar:war:" + baseUrl + UriUtil.getWarSeparator() + archivePath + "!/",
-                jarEntry, "war:" + baseUrl + UriUtil.getWarSeparator() + archivePath);
+    public JarWarResource(WebResourceRoot root, String webAppPath, String base,
+            String baseUrl, JarEntry jarEntry, String archivePath,
+            String internalPath, Manifest manifest) {
+        super(root, webAppPath, base, "jar:war:" + baseUrl + "^/" + archivePath,
+                jarEntry, internalPath, manifest);
         this.archivePath = archivePath;
     }
 
     @Override
     protected JarInputStreamWrapper getJarInputStreamWrapper() {
-        JarFile warFile = null;
-        JarInputStream jarIs = null;
-        JarEntry entry = null;
         try {
-            warFile = getArchiveResourceSet().openJarFile();
+            JarFile warFile = new JarFile(getBase());
             JarEntry jarFileInWar = warFile.getJarEntry(archivePath);
             InputStream isInWar = warFile.getInputStream(jarFileInWar);
 
-            jarIs = new JarInputStream(isInWar);
-            entry = jarIs.getNextJarEntry();
+            JarInputStream jarIs = new JarInputStream(isInWar);
+            JarEntry entry = jarIs.getNextJarEntry();
             while (entry != null &&
                     !entry.getName().equals(getResource().getName())) {
                 entry = jarIs.getNextJarEntry();
             }
 
             if (entry == null) {
+                try {
+                    jarIs.close();
+                } catch (IOException ioe) {
+                    // Ignore
+                }
+                try {
+                    warFile.close();
+                } catch (IOException ioe) {
+                    // Ignore
+                }
                 return null;
             }
 
-            return new JarInputStreamWrapper(entry, jarIs);
+            return new JarInputStreamWrapper(warFile, entry, jarIs);
         } catch (IOException e) {
             if (log.isDebugEnabled()) {
-                log.debug(sm.getString("jarResource.getInputStreamFail",
+                log.debug(sm.getString("fileResource.getInputStreamFail",
                         getResource().getName(), getBaseUrl()), e);
             }
             return null;
-        } finally {
-            if (entry == null) {
-                if (jarIs != null) {
-                    try {
-                        jarIs.close();
-                    } catch (IOException ioe) {
-                        // Ignore
-                    }
-                }
-                if (warFile != null) {
-                    getArchiveResourceSet().closeJarFile();
-                }
-            }
         }
     }
 

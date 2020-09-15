@@ -28,32 +28,24 @@ public class TesterTldListener implements ServletContextListener {
         return log.toString();
     }
 
-    private ServletContext servletContext;
-
     @Override
     public void contextInitialized(ServletContextEvent sce) {
 
         ServletContext sc = sce.getServletContext();
-        servletContext = sc;
 
         // Try and use one of the Servlet 3.0 methods that should be blocked
         try {
             sc.getEffectiveMajorVersion();
-            log.append("FAIL-01");
+            log.append("FAIL");
         } catch (UnsupportedOperationException uoe) {
-            log.append("PASS-01");
+            log.append("PASS");
         } catch (Exception e) {
-            log.append("FAIL-02");
+            log.append("FAIL");
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        // Bug 57446. Same ServletContext should be presented as at init
-        if (servletContext == sce.getServletContext()) {
-            log.append("PASS-02");
-        } else {
-            //log.append("FAIL-03");
-        }
+        // NO-OP
     }
 }

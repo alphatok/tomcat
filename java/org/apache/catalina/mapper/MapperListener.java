@@ -16,9 +16,6 @@
  */
 package org.apache.catalina.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.catalina.Container;
 import org.apache.catalina.ContainerEvent;
 import org.apache.catalina.ContainerListener;
@@ -75,17 +72,15 @@ public class MapperListener extends LifecycleMBeanBase
      */
     private final String domain = null;
 
-
     // ----------------------------------------------------------- Constructors
+
 
     /**
      * Create mapper listener.
-     *
-     * @param service The service this listener is associated with
      */
-    public MapperListener(Service service) {
+    public MapperListener(Mapper mapper, Service service) {
+        this.mapper = mapper;
         this.service = service;
-        this.mapper = service.getMapper();
     }
 
 
@@ -96,13 +91,12 @@ public class MapperListener extends LifecycleMBeanBase
 
         setState(LifecycleState.STARTING);
 
-        Engine engine = service.getContainer();
-        if (engine == null) {
-            return;
-        }
-
+        // Find any components that have already been initialized since the
+        // MBean listener won't be notified as those components will have
+        // already registered their MBeans
         findDefaultHost();
 
+        Engine engine = (Engine) service.getContainer();
         addListeners(engine);
 
         Container[] conHosts = engine.findChildren();
@@ -119,19 +113,13 @@ public class MapperListener extends LifecycleMBeanBase
     @Override
     public void stopInternal() throws LifecycleException {
         setState(LifecycleState.STOPPING);
-
-        Engine engine = service.getContainer();
-        if (engine == null) {
-            return;
-        }
-        removeListeners(engine);
     }
 
 
     @Override
     protected String getDomainInternal() {
         if (service instanceof LifecycleMBeanBase) {
-            return service.getDomain();
+            return ((LifecycleMBeanBase) service).getDomain();
         } else {
             return null;
         }
@@ -141,7 +129,7 @@ public class MapperListener extends LifecycleMBeanBase
     @Override
     protected String getObjectNameKeyProperties() {
         // Same as connector but Mapper rather than Connector
-        return "type=Mapper";
+        return ("type=Mapper");
     }
 
     // --------------------------------------------- Container Listener methods
@@ -160,11 +148,7 @@ public class MapperListener extends LifecycleMBeanBase
                 } else if (child instanceof Context) {
                     registerContext((Context) child);
                 } else if (child instanceof Wrapper) {
-                    // Only if the Context has started. If it has not, then it
-                    // will have its own "after_start" life-cycle event later.
-                    if (child.getParent().getState().isAvailable()) {
-                        registerWrapper((Wrapper) child);
-                    }
+                    registerWrapper((Wrapper) child);
                 }
             }
         } else if (Container.REMOVE_CHILD_EVENT.equals(event.getType())) {
@@ -187,7 +171,7 @@ public class MapperListener extends LifecycleMBeanBase
             if ("/".equals(contextPath)) {
                 contextPath = "";
             }
-            String version = context.getWebappVersion();
+            String version = ((Context) wrapper.getParent()).getWebappVersion();
             String hostName = context.getParent().getName();
             String wrapperName = wrapper.getName();
             String mapping = (String) event.getData();
@@ -199,13 +183,12 @@ public class MapperListener extends LifecycleMBeanBase
             // Handle dynamically removing wrappers
             Wrapper wrapper = (Wrapper) event.getSource();
 
-            Context context = (Context) wrapper.getParent();
-            String contextPath = context.getPath();
+            String contextPath = ((Context) wrapper.getParent()).getPath();
             if ("/".equals(contextPath)) {
                 contextPath = "";
             }
-            String version = context.getWebappVersion();
-            String hostName = context.getParent().getName();
+            String version = ((Context) wrapper.getParent()).getWebappVersion();
+            String hostName = wrapper.getParent().getParent().getName();
 
             String mapping = (String) event.getData();
 
@@ -261,7 +244,7 @@ public class MapperListener extends LifecycleMBeanBase
 
     private void findDefaultHost() {
 
-        Engine engine = service.getContainer();
+        Engine engine = (Engine) service.getContainer();
         String defaultHost = engine.getDefaultHost();
 
         boolean found = false;
@@ -336,15 +319,14 @@ public class MapperListener extends LifecycleMBeanBase
      */
     private void unregisterWrapper(Wrapper wrapper) {
 
-        Context context = ((Context) wrapper.getParent());
-        String contextPath = context.getPath();
+        String contextPath = ((Context) wrapper.getParent()).getPath();
         String wrapperName = wrapper.getName();
 
         if ("/".equals(contextPath)) {
             contextPath = "";
         }
-        String version = context.getWebappVersion();
-        String hostName = context.getParent().getName();
+        String version = ((Context) wrapper.getParent()).getWebappVersion();
+        String hostName = wrapper.getParent().getParent().getName();
 
         String[] mappings = wrapper.findMappings();
 
@@ -372,20 +354,13 @@ public class MapperListener extends LifecycleMBeanBase
 
         WebResourceRoot resources = context.getResources();
         String[] welcomeFiles = context.findWelcomeFiles();
-        List<WrapperMappingInfo> wrappers = new ArrayList<>();
-
-        for (Container container : context.findChildren()) {
-            prepareWrapperMappingInfo(context, (Wrapper) container, wrappers);
-
-            if(log.isDebugEnabled()) {
-                log.debug(sm.getString("mapperListener.registerWrapper",
-                        container.getName(), contextPath, service));
-            }
-        }
 
         mapper.addContextVersion(host.getName(), host, contextPath,
-                context.getWebappVersion(), context, welcomeFiles, resources,
-                wrappers);
+                context.getWebappVersion(), context, welcomeFiles, resources);
+
+        for (Container container : context.findChildren()) {
+            registerWrapper((Wrapper) container);
+        }
 
         if(log.isDebugEnabled()) {
             log.debug(sm.getString("mapperListener.registerContext",
@@ -399,29 +374,24 @@ public class MapperListener extends LifecycleMBeanBase
      */
     private void unregisterContext(Context context) {
 
+        // Don't un-map a context that is paused
+        if (context.getPaused()){
+            return;
+        }
+
         String contextPath = context.getPath();
         if ("/".equals(contextPath)) {
             contextPath = "";
         }
         String hostName = context.getParent().getName();
 
-        if (context.getPaused()) {
-            if (log.isDebugEnabled()) {
-                log.debug(sm.getString("mapperListener.pauseContext",
-                        contextPath, service));
-            }
-
-            mapper.pauseContextVersion(context, hostName, contextPath,
-                    context.getWebappVersion());
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug(sm.getString("mapperListener.unregisterContext",
-                        contextPath, service));
-            }
-
-            mapper.removeContextVersion(context, hostName, contextPath,
-                    context.getWebappVersion());
+        if(log.isDebugEnabled()) {
+            log.debug(sm.getString("mapperListener.unregisterContext",
+                    contextPath, service));
         }
+
+        mapper.removeContextVersion(context, hostName, contextPath,
+                context.getWebappVersion());
     }
 
 
@@ -430,42 +400,28 @@ public class MapperListener extends LifecycleMBeanBase
      */
     private void registerWrapper(Wrapper wrapper) {
 
+        String wrapperName = wrapper.getName();
         Context context = (Context) wrapper.getParent();
         String contextPath = context.getPath();
         if ("/".equals(contextPath)) {
             contextPath = "";
         }
-        String version = context.getWebappVersion();
+        String version = ((Context) wrapper.getParent()).getWebappVersion();
         String hostName = context.getParent().getName();
 
-        List<WrapperMappingInfo> wrappers = new ArrayList<>();
-        prepareWrapperMappingInfo(context, wrapper, wrappers);
-        mapper.addWrappers(hostName, contextPath, version, wrappers);
-
-        if(log.isDebugEnabled()) {
-            log.debug(sm.getString("mapperListener.registerWrapper",
-                    wrapper.getName(), contextPath, service));
-        }
-    }
-
-    /**
-     * Populate <code>wrappers</code> list with information for registration of
-     * mappings for this wrapper in this context.
-     *
-     * @param context
-     * @param wrapper
-     * @param list
-     */
-    private void prepareWrapperMappingInfo(Context context, Wrapper wrapper,
-            List<WrapperMappingInfo> wrappers) {
-        String wrapperName = wrapper.getName();
-        boolean resourceOnly = context.isResourceOnlyServlet(wrapperName);
         String[] mappings = wrapper.findMappings();
+
         for (String mapping : mappings) {
             boolean jspWildCard = (wrapperName.equals("jsp")
                                    && mapping.endsWith("/*"));
-            wrappers.add(new WrapperMappingInfo(mapping, wrapper, jspWildCard,
-                    resourceOnly));
+            mapper.addWrapper(hostName, contextPath, version, mapping, wrapper,
+                              jspWildCard,
+                              context.isResourceOnlyServlet(wrapperName));
+        }
+
+        if(log.isDebugEnabled()) {
+            log.debug(sm.getString("mapperListener.registerWrapper",
+                    wrapperName, contextPath, service));
         }
     }
 
@@ -495,7 +451,12 @@ public class MapperListener extends LifecycleMBeanBase
             if (obj instanceof Wrapper) {
                 unregisterWrapper((Wrapper) obj);
             } else if (obj instanceof Context) {
-                unregisterContext((Context) obj);
+                Context c = (Context) obj;
+                // Only unregister if not paused. If paused, need to keep
+                // registration in place to prevent 404's during reload
+                if (!c.getPaused()) {
+                    unregisterContext(c);
+                }
             } else if (obj instanceof Host) {
                 unregisterHost((Host) obj);
             }

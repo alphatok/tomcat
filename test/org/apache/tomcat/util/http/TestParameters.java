@@ -18,7 +18,6 @@ package org.apache.tomcat.util.http;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -106,7 +105,7 @@ public class TestParameters {
         byte[] data = input.toString().getBytes();
 
         Parameters p = new Parameters();
-        p.setCharset(StandardCharsets.UTF_8);
+        p.setEncoding("UTF-8");
         p.setLimit(limit);
 
         long start = System.nanoTime();

@@ -35,8 +35,6 @@ public class BeanRepository {
 
     /**
      * Constructor.
-     * @param loader The class loader
-     * @param err The error dispatcher that will be used to report errors
      */
     public BeanRepository(ClassLoader loader, ErrorDispatcher err) {
         this.loader = loader;

@@ -17,6 +17,9 @@
 
 package org.apache.jasper.compiler;
 
+import java.lang.reflect.Method;
+
+import javax.el.FunctionMapper;
 import javax.el.ValueExpression;
 
 import static org.junit.Assert.assertEquals;
@@ -124,15 +127,19 @@ public class TestAttributeParser {
         // list and looking at the spec to find some edge cases
 
         // '\' is only an escape character inside a StringLiteral
-        // Attribute escaping does not apply inside EL expressions
-        assertEquals("\\", evalAttr("${'\\\\'}", '\"'));
+        assertEquals("\\", evalAttr("${'\\\\\\\\'}", '\"'));
+        assertEquals("\\", evalAttr("${\"\\\\\\\\\"}", '\"'));
 
         // Can use ''' inside '"' when quoting with '"' and vice versa without
         // escaping
-        assertEquals("\\\"", evalAttr("${'\\\\\"'}", '\"'));
-        assertEquals("\"\\", evalAttr("${'\\\"\\\\'}", '\"'));
-        assertEquals("\\'", evalAttr("${'\\\\\\''}", '\"'));
-        assertEquals("'\\", evalAttr("${'\\'\\\\'}", '\"'));
+        assertEquals("\\\"", evalAttr("${'\\\\\\\\\\\"'}", '\"'));
+        assertEquals("\"\\", evalAttr("${'\\\"\\\\\\\\'}", '\"'));
+        assertEquals("\\'", evalAttr("${'\\\\\\\\\\\\''}", '\"'));
+        assertEquals("'\\", evalAttr("${'\\\\'\\\\\\\\'}", '\"'));
+        assertEquals("\\'", evalAttr("${\\\"\\\\\\\\'\\\"}", '\"'));
+        assertEquals("'\\", evalAttr("${\\\"'\\\\\\\\\\\"}", '\"'));
+        assertEquals("\\\"", evalAttr("${\\\"\\\\\\\\\\\\\\\"\\\"}", '\"'));
+        assertEquals("\"\\", evalAttr("${\\\"\\\\\\\"\\\\\\\\\\\"}", '\"'));
 
         // Quoting <% and %>
         assertEquals("hello <% world", evalAttr("hello <\\% world", '\"'));
@@ -149,8 +156,9 @@ public class TestAttributeParser {
         // expression that follows from being evaluated.
         //
         assertEquals("foo\\bar\\baz", evalAttr("${\'foo\'}\\\\${\'bar\'}\\\\${\'baz\'}", '\"'));
-        assertEquals("foo\\bar\\baz", evalAttr("${\'foo\'}\\\\${\"bar\"}\\\\${\'baz\'}", '\"'));
-        assertEquals("foo\\bar\\baz", evalAttr("${\"foo\"}\\\\${\'bar\'}\\\\${\"baz\"}", '\"'));
+        assertEquals("foo\\bar\\baz", evalAttr("${\'foo\'}\\\\${\\\"bar\\\"}\\\\${\'baz\'}", '\"'));
+        assertEquals("foo\\bar\\baz", evalAttr("${\\\"foo\\\"}\\\\${\'bar\'}\\\\${\\\"baz\\\"}", '\"'));
+        assertEquals("foo\\bar\\baz", evalAttr("${\"foo\"}\\\\${\\\'bar\\\'}\\\\${\"baz\"}", '\''));
     }
 
     @Test
@@ -165,16 +173,35 @@ public class TestAttributeParser {
 
         ExpressionFactoryImpl exprFactory = new ExpressionFactoryImpl();
         ELContextImpl ctx = new ELContextImpl(exprFactory);
-        ctx.setFunctionMapper(new TesterFunctions.FMapper());
+        ctx.setFunctionMapper(new FMapper());
         ValueExpression ve = exprFactory.createValueExpression(ctx,
                 AttributeParser.getUnquoted(expression, quote, false, false,
-                        false, false),
+                        false),
                 String.class);
         return (String) ve.getValue(ctx);
     }
 
     private String parseScriptExpression(String expression, char quote) {
         return AttributeParser.getUnquoted(expression, quote, false, false,
-                false, false);
+                false);
+    }
+
+    public static class FMapper extends FunctionMapper {
+
+        @Override
+        public Method resolveFunction(String prefix, String localName) {
+            if ("trim".equals(localName)) {
+                Method m;
+                try {
+                    m = TesterFunctions.class.getMethod("trim", String.class);
+                    return m;
+                } catch (SecurityException e) {
+                    // Ignore
+                } catch (NoSuchMethodException e) {
+                    // Ignore
+                }
+            }
+            return null;
+        }
     }
 }

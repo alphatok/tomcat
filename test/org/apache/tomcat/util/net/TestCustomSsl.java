@@ -25,7 +25,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Assume;
 import org.junit.Test;
 
 import org.apache.catalina.Context;
@@ -35,6 +34,7 @@ import org.apache.catalina.startup.TomcatBaseTest;
 import org.apache.coyote.ProtocolHandler;
 import org.apache.coyote.http11.AbstractHttp11JsseProtocol;
 import org.apache.tomcat.util.buf.ByteChunk;
+import org.apache.tomcat.util.descriptor.web.ApplicationListener;
 import org.apache.tomcat.util.net.jsse.TesterBug50640SslImpl;
 import org.apache.tomcat.websocket.server.WsContextListener;
 
@@ -52,15 +52,13 @@ public class TestCustomSsl extends TomcatBaseTest {
 
         Tomcat tomcat = getTomcatInstance();
         Connector connector = tomcat.getConnector();
-
-        Assume.assumeFalse("This test is only for JSSE based SSL connectors",
-                connector.getProtocolHandlerClassName().contains("Apr"));
+        if (connector.getProtocolHandlerClassName().contains("Apr")) {
+            // This test is only for JSSE based SSL connectors
+            return;
+        }
 
         connector.setProperty("sslImplementationName",
                 "org.apache.tomcat.util.net.jsse.TesterBug50640SslImpl");
-
-        // This setting will break ssl configuration unless the custom
-        // implementation is used.
         connector.setProperty(TesterBug50640SslImpl.PROPERTY_NAME,
                 TesterBug50640SslImpl.PROPERTY_VALUE);
 
@@ -77,12 +75,13 @@ public class TestCustomSsl extends TomcatBaseTest {
         File appDir = new File(getBuildDirectory(), "webapps/examples");
         Context ctxt  = tomcat.addWebapp(
                 null, "/examples", appDir.getAbsolutePath());
-        ctxt.addApplicationListener(WsContextListener.class.getName());
+        ctxt.addApplicationListener(new ApplicationListener(
+                WsContextListener.class.getName(), false));
 
         tomcat.start();
         ByteChunk res = getUrl("https://localhost:" + getPort() +
             "/examples/servlets/servlet/HelloWorldExample");
-        assertTrue(res.toString().indexOf("<a href=\"../helloworld.html\">") > 0);
+        assertTrue(res.toString().indexOf("<h1>Hello World!</h1>") > 0);
     }
 
     @Test
@@ -98,10 +97,17 @@ public class TestCustomSsl extends TomcatBaseTest {
     private void doTestCustomTrustManager(boolean serverTrustAll)
             throws Exception {
 
+        if (!TesterSupport.RFC_5746_SUPPORTED) {
+            // Make sure SSL renegotiation is not disabled in the JVM
+            System.setProperty("sun.security.ssl.allowUnsafeRenegotiation",
+                    "true");
+        }
+
         Tomcat tomcat = getTomcatInstance();
 
-        Assume.assumeTrue("SSL renegotiation has to be supported for this test",
-                TesterSupport.isRenegotiationSupported(getTomcatInstance()));
+        if (!TesterSupport.isRenegotiationSupported(getTomcatInstance())) {
+            return;
+        }
 
         TesterSupport.configureClientCertContext(tomcat);
 
@@ -147,7 +153,7 @@ public class TestCustomSsl extends TomcatBaseTest {
         }
         if (serverTrustAll) {
             assertEquals(200, rc);
-            assertEquals("OK-" + TesterSupport.ROLE, res.toString());
+            assertEquals("OK", res.toString());
         } else {
             assertTrue(rc != 200);
             assertEquals("", res.toString());

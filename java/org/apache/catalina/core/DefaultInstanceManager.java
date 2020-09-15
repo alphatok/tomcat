@@ -27,13 +27,11 @@ import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
+import java.util.WeakHashMap;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -43,16 +41,16 @@ import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceUnit;
+import javax.servlet.Filter;
+import javax.servlet.Servlet;
 import javax.xml.ws.WebServiceRef;
 
 import org.apache.catalina.ContainerServlet;
 import org.apache.catalina.Globals;
 import org.apache.catalina.security.SecurityUtil;
 import org.apache.catalina.util.Introspection;
-import org.apache.juli.logging.Log;
 import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.util.ExceptionUtils;
-import org.apache.tomcat.util.collections.ManagedConcurrentWeakHashMap;
 import org.apache.tomcat.util.res.StringManager;
 
 public class DefaultInstanceManager implements InstanceManager {
@@ -73,9 +71,11 @@ public class DefaultInstanceManager implements InstanceManager {
     protected final ClassLoader containerClassLoader;
     protected final boolean privileged;
     protected final boolean ignoreAnnotations;
-    private final Set<String> restrictedClasses;
-    private final ManagedConcurrentWeakHashMap<Class<?>, AnnotationCacheEntry[]> annotationCache =
-            new ManagedConcurrentWeakHashMap<>();
+    private final Properties restrictedFilters = new Properties();
+    private final Properties restrictedListeners = new Properties();
+    private final Properties restrictedServlets = new Properties();
+    private final Map<Class<?>, AnnotationCacheEntry[]> annotationCache =
+        new WeakHashMap<>();
     private final Map<String, String> postConstructMethods;
     private final Map<String, String> preDestroyMethods;
 
@@ -87,18 +87,50 @@ public class DefaultInstanceManager implements InstanceManager {
         privileged = catalinaContext.getPrivileged();
         this.containerClassLoader = containerClassLoader;
         ignoreAnnotations = catalinaContext.getIgnoreAnnotations();
-        Log log = catalinaContext.getLogger();
-        Set<String> classNames = new HashSet<>();
-        loadProperties(classNames,
-                "org/apache/catalina/core/RestrictedServlets.properties",
-                "defaultInstanceManager.restrictedServletsResource", log);
-        loadProperties(classNames,
-                "org/apache/catalina/core/RestrictedListeners.properties",
-                "defaultInstanceManager.restrictedListenersResource", log);
-        loadProperties(classNames,
-                "org/apache/catalina/core/RestrictedFilters.properties",
-                "defaultInstanceManager.restrictedFiltersResource", log);
-        restrictedClasses = Collections.unmodifiableSet(classNames);
+        StringManager sm = StringManager.getManager(Constants.Package);
+        try {
+            InputStream is =
+                this.getClass().getClassLoader().getResourceAsStream
+                    ("org/apache/catalina/core/RestrictedServlets.properties");
+            if (is != null) {
+                restrictedServlets.load(is);
+            } else {
+                catalinaContext.getLogger().error(sm.getString(
+                        "defaultInstanceManager.restrictedServletsResource"));
+            }
+        } catch (IOException e) {
+            catalinaContext.getLogger().error(sm.getString(
+                    "defaultInstanceManager.restrictedServletsResource"), e);
+        }
+
+        try {
+            InputStream is =
+                    this.getClass().getClassLoader().getResourceAsStream
+                            ("org/apache/catalina/core/RestrictedListeners.properties");
+            if (is != null) {
+                restrictedListeners.load(is);
+            } else {
+                catalinaContext.getLogger().error(sm.getString(
+                        "defaultInstanceManager.restrictedListenersResources"));
+            }
+        } catch (IOException e) {
+            catalinaContext.getLogger().error(sm.getString(
+                    "defaultInstanceManager.restrictedListenersResources"), e);
+        }
+        try {
+            InputStream is =
+                    this.getClass().getClassLoader().getResourceAsStream
+                            ("org/apache/catalina/core/RestrictedFilters.properties");
+            if (is != null) {
+                restrictedFilters.load(is);
+            } else {
+                catalinaContext.getLogger().error(sm.getString(
+                        "defaultInstanceManager.restrictedFiltersResource"));
+            }
+        } catch (IOException e) {
+            catalinaContext.getLogger().error(sm.getString(
+                    "defaultInstanceManager.restrictedServletsResources"), e);
+        }
         this.context = context;
         this.injectionMap = injectionMap;
         this.postConstructMethods = catalinaContext.findPostConstructMethods();
@@ -107,26 +139,25 @@ public class DefaultInstanceManager implements InstanceManager {
 
     @Override
     public Object newInstance(Class<?> clazz) throws IllegalAccessException,
-            InvocationTargetException, NamingException, InstantiationException,
-            IllegalArgumentException, NoSuchMethodException, SecurityException {
-        return newInstance(clazz.getConstructor().newInstance(), clazz);
+            InvocationTargetException, NamingException, InstantiationException {
+        return newInstance(clazz.newInstance(), clazz);
     }
 
     @Override
     public Object newInstance(String className) throws IllegalAccessException,
             InvocationTargetException, NamingException, InstantiationException,
-            ClassNotFoundException, IllegalArgumentException, NoSuchMethodException, SecurityException {
+            ClassNotFoundException {
         Class<?> clazz = loadClassMaybePrivileged(className, classLoader);
-        return newInstance(clazz.getConstructor().newInstance(), clazz);
+        return newInstance(clazz.newInstance(), clazz);
     }
 
     @Override
     public Object newInstance(final String className, final ClassLoader classLoader)
-            throws IllegalAccessException, NamingException, InvocationTargetException,
-            InstantiationException, ClassNotFoundException, IllegalArgumentException,
-            NoSuchMethodException, SecurityException {
+            throws IllegalAccessException, NamingException,
+            InvocationTargetException, InstantiationException,
+            ClassNotFoundException {
         Class<?> clazz = classLoader.loadClass(className);
-        return newInstance(clazz.getConstructor().newInstance(), clazz);
+        return newInstance(clazz.newInstance(), clazz);
     }
 
     @Override
@@ -191,7 +222,10 @@ public class DefaultInstanceManager implements InstanceManager {
 
         // At the end the postconstruct annotated
         // method is invoked
-        AnnotationCacheEntry[] annotations = annotationCache.get(clazz);
+        AnnotationCacheEntry[] annotations;
+        synchronized (annotationCache) {
+            annotations = annotationCache.get(clazz);
+        }
         for (AnnotationCacheEntry entry : annotations) {
             if (entry.getType() == AnnotationCacheEntryType.POST_CONSTRUCT) {
                 Method postConstruct = getMethod(clazz, entry);
@@ -225,7 +259,10 @@ public class DefaultInstanceManager implements InstanceManager {
 
         // At the end the postconstruct annotated
         // method is invoked
-        AnnotationCacheEntry[] annotations = annotationCache.get(clazz);
+        AnnotationCacheEntry[] annotations = null;
+        synchronized (annotationCache) {
+            annotations = annotationCache.get(clazz);
+        }
         if (annotations == null) {
             // instance not created through the instance manager
             return;
@@ -241,12 +278,6 @@ public class DefaultInstanceManager implements InstanceManager {
                 }
             }
         }
-    }
-
-
-    @Override
-    public void backgroundProcess() {
-        annotationCache.maintain();
     }
 
 
@@ -269,7 +300,10 @@ public class DefaultInstanceManager implements InstanceManager {
         List<AnnotationCacheEntry> annotations = null;
 
         while (clazz != null) {
-            AnnotationCacheEntry[] annotationsArray = annotationCache.get(clazz);
+            AnnotationCacheEntry[] annotationsArray = null;
+            synchronized (annotationCache) {
+                annotationsArray = annotationCache.get(clazz);
+            }
             if (annotationsArray == null) {
                 if (annotations == null) {
                     annotations = new ArrayList<>();
@@ -282,38 +316,38 @@ public class DefaultInstanceManager implements InstanceManager {
                     // JNDI is enabled
                     Field[] fields = Introspection.getDeclaredFields(clazz);
                     for (Field field : fields) {
-                        Resource resourceAnnotation;
-                        EJB ejbAnnotation;
-                        WebServiceRef webServiceRefAnnotation;
-                        PersistenceContext persistenceContextAnnotation;
-                        PersistenceUnit persistenceUnitAnnotation;
                         if (injections != null && injections.containsKey(field.getName())) {
                             annotations.add(new AnnotationCacheEntry(
                                     field.getName(), null,
                                     injections.get(field.getName()),
                                     AnnotationCacheEntryType.FIELD));
-                        } else if ((resourceAnnotation =
-                                field.getAnnotation(Resource.class)) != null) {
-                            annotations.add(new AnnotationCacheEntry(field.getName(), null,
-                                    resourceAnnotation.name(), AnnotationCacheEntryType.FIELD));
-                        } else if ((ejbAnnotation =
-                                field.getAnnotation(EJB.class)) != null) {
-                            annotations.add(new AnnotationCacheEntry(field.getName(), null,
-                                    ejbAnnotation.name(), AnnotationCacheEntryType.FIELD));
-                        } else if ((webServiceRefAnnotation =
-                                field.getAnnotation(WebServiceRef.class)) != null) {
-                            annotations.add(new AnnotationCacheEntry(field.getName(), null,
-                                    webServiceRefAnnotation.name(),
+                        } else if (field.isAnnotationPresent(Resource.class)) {
+                            Resource annotation = field.getAnnotation(Resource.class);
+                            annotations.add(new AnnotationCacheEntry(
+                                    field.getName(), null, annotation.name(),
                                     AnnotationCacheEntryType.FIELD));
-                        } else if ((persistenceContextAnnotation =
-                                field.getAnnotation(PersistenceContext.class)) != null) {
-                            annotations.add(new AnnotationCacheEntry(field.getName(), null,
-                                    persistenceContextAnnotation.name(),
+                        } else if (field.isAnnotationPresent(EJB.class)) {
+                            EJB annotation = field.getAnnotation(EJB.class);
+                            annotations.add(new AnnotationCacheEntry(
+                                    field.getName(), null, annotation.name(),
                                     AnnotationCacheEntryType.FIELD));
-                        } else if ((persistenceUnitAnnotation =
-                                field.getAnnotation(PersistenceUnit.class)) != null) {
-                            annotations.add(new AnnotationCacheEntry(field.getName(), null,
-                                    persistenceUnitAnnotation.name(),
+                        } else if (field.isAnnotationPresent(WebServiceRef.class)) {
+                            WebServiceRef annotation =
+                                    field.getAnnotation(WebServiceRef.class);
+                            annotations.add(new AnnotationCacheEntry(
+                                    field.getName(), null, annotation.name(),
+                                    AnnotationCacheEntryType.FIELD));
+                        } else if (field.isAnnotationPresent(PersistenceContext.class)) {
+                            PersistenceContext annotation =
+                                    field.getAnnotation(PersistenceContext.class);
+                            annotations.add(new AnnotationCacheEntry(
+                                    field.getName(), null, annotation.name(),
+                                    AnnotationCacheEntryType.FIELD));
+                        } else if (field.isAnnotationPresent(PersistenceUnit.class)) {
+                            PersistenceUnit annotation =
+                                    field.getAnnotation(PersistenceUnit.class);
+                            annotations.add(new AnnotationCacheEntry(
+                                    field.getName(), null, annotation.name(),
                                     AnnotationCacheEntryType.FIELD));
                         }
                     }
@@ -340,44 +374,43 @@ public class DefaultInstanceManager implements InstanceManager {
                                 continue;
                             }
                         }
-                        Resource resourceAnnotation;
-                        EJB ejbAnnotation;
-                        WebServiceRef webServiceRefAnnotation;
-                        PersistenceContext persistenceContextAnnotation;
-                        PersistenceUnit persistenceUnitAnnotation;
-                        if ((resourceAnnotation =
-                                method.getAnnotation(Resource.class)) != null) {
+                        if (method.isAnnotationPresent(Resource.class)) {
+                            Resource annotation = method.getAnnotation(Resource.class);
                             annotations.add(new AnnotationCacheEntry(
                                     method.getName(),
                                     method.getParameterTypes(),
-                                    resourceAnnotation.name(),
+                                    annotation.name(),
                                     AnnotationCacheEntryType.SETTER));
-                        } else if ((ejbAnnotation =
-                                method.getAnnotation(EJB.class)) != null) {
+                        } else if (method.isAnnotationPresent(EJB.class)) {
+                            EJB annotation = method.getAnnotation(EJB.class);
                             annotations.add(new AnnotationCacheEntry(
                                     method.getName(),
                                     method.getParameterTypes(),
-                                    ejbAnnotation.name(),
+                                    annotation.name(),
                                     AnnotationCacheEntryType.SETTER));
-                        } else if ((webServiceRefAnnotation =
-                                method.getAnnotation(WebServiceRef.class)) != null) {
+                        } else if (method.isAnnotationPresent(WebServiceRef.class)) {
+                            WebServiceRef annotation =
+                                    method.getAnnotation(WebServiceRef.class);
                             annotations.add(new AnnotationCacheEntry(
                                     method.getName(),
                                     method.getParameterTypes(),
-                                    webServiceRefAnnotation.name(),
+                                    annotation.name(),
                                     AnnotationCacheEntryType.SETTER));
-                        } else if ((persistenceContextAnnotation =
-                                method.getAnnotation(PersistenceContext.class)) != null) {
+                        } else if (method.isAnnotationPresent(PersistenceContext.class)) {
+                            PersistenceContext annotation =
+                                    method.getAnnotation(PersistenceContext.class);
                             annotations.add(new AnnotationCacheEntry(
                                     method.getName(),
                                     method.getParameterTypes(),
-                                    persistenceContextAnnotation.name(),
+                                    annotation.name(),
                                     AnnotationCacheEntryType.SETTER));
-                        } else if ((persistenceUnitAnnotation = method.getAnnotation(PersistenceUnit.class)) != null) {
+                        } else if (method.isAnnotationPresent(PersistenceUnit.class)) {
+                            PersistenceUnit annotation =
+                                    method.getAnnotation(PersistenceUnit.class);
                             annotations.add(new AnnotationCacheEntry(
                                     method.getName(),
                                     method.getParameterTypes(),
-                                    persistenceUnitAnnotation.name(),
+                                    annotation.name(),
                                     AnnotationCacheEntryType.SETTER));
                         }
                     }
@@ -444,7 +477,10 @@ public class DefaultInstanceManager implements InstanceManager {
         Class<?> clazz = instance.getClass();
 
         while (clazz != null) {
-            AnnotationCacheEntry[] annotations = annotationCache.get(clazz);
+            AnnotationCacheEntry[] annotations;
+            synchronized (annotationCache) {
+                annotations = annotationCache.get(clazz);
+            }
             for (AnnotationCacheEntry entry : annotations) {
                 if (entry.getType() == AnnotationCacheEntryType.SETTER) {
                     lookupMethodResource(context, instance,
@@ -463,11 +499,11 @@ public class DefaultInstanceManager implements InstanceManager {
 
     /**
      * Makes cache size available to unit tests.
-     *
-     * @return the cache size
      */
     protected int getAnnotationCacheSize() {
-        return annotationCache.size();
+        synchronized (annotationCache) {
+            return annotationCache.size();
+        }
     }
 
 
@@ -476,8 +512,13 @@ public class DefaultInstanceManager implements InstanceManager {
         Class<?> clazz;
         if (SecurityUtil.isPackageProtectionEnabled()) {
             try {
-                clazz = AccessController.doPrivileged(
-                        new PrivilegedLoadClass(className, classLoader));
+                clazz = AccessController.doPrivileged(new PrivilegedExceptionAction<Class<?>>() {
+
+                    @Override
+                    public Class<?> run() throws Exception {
+                        return loadClass(className, classLoader);
+                    }
+                });
             } catch (PrivilegedActionException e) {
                 Throwable t = e.getCause();
                 if (t instanceof ClassNotFoundException) {
@@ -512,17 +553,27 @@ public class DefaultInstanceManager implements InstanceManager {
         if (privileged) {
             return;
         }
-        if (ContainerServlet.class.isAssignableFrom(clazz)) {
-            throw new SecurityException(sm.getString(
-                    "defaultInstanceManager.restrictedContainerServlet", clazz));
+        if (Filter.class.isAssignableFrom(clazz)) {
+            checkAccess(clazz, restrictedFilters);
+        } else if (Servlet.class.isAssignableFrom(clazz)) {
+            if (ContainerServlet.class.isAssignableFrom(clazz)) {
+                throw new SecurityException("Restricted (ContainerServlet) " +
+                        clazz);
+            }
+            checkAccess(clazz, restrictedServlets);
+        } else {
+            checkAccess(clazz, restrictedListeners);
         }
+    }
+
+    private void checkAccess(Class<?> clazz, Properties restricted) {
         while (clazz != null) {
-            if (restrictedClasses.contains(clazz.getName())) {
-                throw new SecurityException(sm.getString(
-                        "defaultInstanceManager.restrictedClass", clazz));
+            if ("restricted".equals(restricted.getProperty(clazz.getName()))) {
+                throw new SecurityException("Restricted " + clazz);
             }
             clazz = clazz.getSuperclass();
         }
+
     }
 
     /**
@@ -602,33 +653,6 @@ public class DefaultInstanceManager implements InstanceManager {
         }
     }
 
-    private static void loadProperties(Set<String> classNames, String resourceName,
-            String messageKey, Log log) {
-        Properties properties = new Properties();
-        ClassLoader cl = DefaultInstanceManager.class.getClassLoader();
-        try (InputStream is = cl.getResourceAsStream(resourceName)) {
-            if (is == null) {
-                log.error(sm.getString(messageKey, resourceName));
-            } else {
-                properties.load(is);
-            }
-        } catch (IOException ioe) {
-            log.error(sm.getString(messageKey, resourceName), ioe);
-        }
-        if (properties.isEmpty()) {
-            return;
-        }
-        for (Map.Entry<Object, Object> e : properties.entrySet()) {
-            if ("restricted".equals(e.getValue())) {
-                classNames.add(e.getKey().toString());
-            } else {
-                log.warn(sm.getString(
-                        "defaultInstanceManager.restrictedWrongValue",
-                        resourceName, e.getKey(), e.getValue()));
-            }
-        }
-    }
-
     private static String normalize(String jndiName){
         if(jndiName != null && jndiName.startsWith("java:comp/env/")){
             return jndiName.substring(14);
@@ -640,7 +664,22 @@ public class DefaultInstanceManager implements InstanceManager {
             final AnnotationCacheEntry entry) {
         Method result = null;
         if (Globals.IS_SECURITY_ENABLED) {
-            result = AccessController.doPrivileged(new PrivilegedGetMethod(clazz, entry));
+            result = AccessController.doPrivileged(
+                    new PrivilegedAction<Method>() {
+                        @Override
+                        public Method run() {
+                            Method result = null;
+                            try {
+                                result = clazz.getDeclaredMethod(
+                                        entry.getAccessibleObjectName(),
+                                        entry.getParamTypes());
+                            } catch (NoSuchMethodException e) {
+                                // Should never happen. On that basis don't log
+                                // it.
+                            }
+                            return result;
+                        }
+            });
         } else {
             try {
                 result = clazz.getDeclaredMethod(
@@ -656,10 +695,25 @@ public class DefaultInstanceManager implements InstanceManager {
             final AnnotationCacheEntry entry) {
         Field result = null;
         if (Globals.IS_SECURITY_ENABLED) {
-            result = AccessController.doPrivileged(new PrivilegedGetField(clazz, entry));
+            result = AccessController.doPrivileged(
+                    new PrivilegedAction<Field>() {
+                        @Override
+                        public Field run() {
+                            Field result = null;
+                            try {
+                                result = clazz.getDeclaredField(
+                                        entry.getAccessibleObjectName());
+                            } catch (NoSuchFieldException e) {
+                                // Should never happen. On that basis don't log
+                                // it.
+                            }
+                            return result;
+                        }
+            });
         } else {
             try {
-                result = clazz.getDeclaredField(entry.getAccessibleObjectName());
+                result = clazz.getDeclaredField(
+                        entry.getAccessibleObjectName());
             } catch (NoSuchFieldException e) {
                 // Should never happen. On that basis don't log it.
             }
@@ -688,15 +742,16 @@ public class DefaultInstanceManager implements InstanceManager {
             if (method.getName().equals(methodNameFromXml)) {
                 if (!Introspection.isValidLifecycleCallback(method)) {
                     throw new IllegalArgumentException(
-                            "Invalid " + annotation.getName() + " annotation");
+                        "Invalid " + annotation.getName() + " annotation");
                 }
                 result = method;
             }
         } else {
             if (method.isAnnotationPresent(annotation)) {
-                if (currentMethod != null || !Introspection.isValidLifecycleCallback(method)) {
+                if (currentMethod != null ||
+                    !Introspection.isValidLifecycleCallback(method)) {
                     throw new IllegalArgumentException(
-                            "Invalid " + annotation.getName() + " annotation");
+                        "Invalid " + annotation.getName() + " annotation");
                 }
                 result = method;
             }
@@ -735,72 +790,7 @@ public class DefaultInstanceManager implements InstanceManager {
         }
     }
 
-
-    private enum AnnotationCacheEntryType {
+    private static enum AnnotationCacheEntryType {
         FIELD, SETTER, POST_CONSTRUCT, PRE_DESTROY
-    }
-
-
-    private static class PrivilegedGetField implements PrivilegedAction<Field> {
-
-        private final Class<?> clazz;
-        private final AnnotationCacheEntry entry;
-
-        public PrivilegedGetField(Class<?> clazz, AnnotationCacheEntry entry) {
-            this.clazz = clazz;
-            this.entry = entry;
-        }
-
-        @Override
-        public Field run() {
-            Field result = null;
-            try {
-                result = clazz.getDeclaredField(entry.getAccessibleObjectName());
-            } catch (NoSuchFieldException e) {
-                // Should never happen. On that basis don't log it.
-            }
-            return result;
-        }
-    }
-
-
-    private static class PrivilegedGetMethod implements PrivilegedAction<Method> {
-
-        private final Class<?> clazz;
-        private final AnnotationCacheEntry entry;
-
-        public PrivilegedGetMethod(Class<?> clazz, AnnotationCacheEntry entry) {
-            this.clazz = clazz;
-            this.entry = entry;
-        }
-
-        @Override
-        public Method run() {
-            Method result = null;
-            try {
-                result = clazz.getDeclaredMethod(
-                        entry.getAccessibleObjectName(), entry.getParamTypes());
-            } catch (NoSuchMethodException e) {
-                // Should never happen. On that basis don't log it.
-            }
-            return result;
-        }
-    }
-
-
-    private class PrivilegedLoadClass implements PrivilegedExceptionAction<Class<?>> {
-
-        private final String className;
-        private final ClassLoader classLoader;
-
-        public PrivilegedLoadClass(String className, ClassLoader classLoader) {
-            this.className = className;
-            this.classLoader = classLoader;
-        }
-
-        @Override
-        public Class<?> run() throws Exception {
-            return loadClass(className, classLoader);
-        }
     }
 }

@@ -168,12 +168,14 @@ public class FactoryCreateRule extends Rule {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("FactoryCreateRule[");
         if (creationFactory != null) {
             sb.append("creationFactory=");
             sb.append(creationFactory);
         }
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 }

@@ -17,7 +17,6 @@
 package org.apache.el.util;
 
 import java.text.MessageFormat;
-import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 /**
@@ -25,7 +24,7 @@ import java.util.ResourceBundle;
  */
 public final class MessageFactory {
 
-    static final ResourceBundle bundle =
+    protected static final ResourceBundle bundle =
             ResourceBundle.getBundle("org.apache.el.Messages");
 
     public MessageFactory() {
@@ -33,15 +32,14 @@ public final class MessageFactory {
     }
 
     public static String get(final String key) {
-        try {
-            return bundle.getString(key);
-        } catch (MissingResourceException e) {
-            return key;
-        }
+        return bundle.getString(key);
     }
 
     public static String get(final String key, final Object... args) {
         String value = get(key);
+        if (value == null) {
+            value = key;
+        }
 
         MessageFormat mf = new MessageFormat(value);
         return mf.format(args, new StringBuffer(), null).toString();

@@ -41,7 +41,7 @@ public class ObjectCreateRule extends Rule {
      */
     public ObjectCreateRule(String className) {
 
-        this(className, null);
+        this(className, (String) null);
 
     }
 
@@ -145,13 +145,15 @@ public class ObjectCreateRule extends Rule {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("ObjectCreateRule[");
         sb.append("className=");
         sb.append(className);
         sb.append(", attributeName=");
         sb.append(attributeName);
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 
 

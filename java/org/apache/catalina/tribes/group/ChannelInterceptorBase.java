@@ -16,14 +16,10 @@
  */
 package org.apache.catalina.tribes.group;
 
-import javax.management.ObjectName;
-
-import org.apache.catalina.tribes.Channel;
 import org.apache.catalina.tribes.ChannelException;
 import org.apache.catalina.tribes.ChannelInterceptor;
 import org.apache.catalina.tribes.ChannelMessage;
 import org.apache.catalina.tribes.Member;
-import org.apache.catalina.tribes.jmx.JmxRegistry;
 
 /**
  * Abstract class for the interceptor base class.
@@ -32,14 +28,8 @@ public abstract class ChannelInterceptorBase implements ChannelInterceptor {
 
     private ChannelInterceptor next;
     private ChannelInterceptor previous;
-    private Channel channel;
     //default value, always process
     protected int optionFlag = 0;
-
-    /**
-     * the ObjectName of this ChannelInterceptor.
-     */
-    private ObjectName oname = null;
 
     public ChannelInterceptorBase() {
 
@@ -163,10 +153,6 @@ public abstract class ChannelInterceptorBase implements ChannelInterceptor {
     @Override
     public void start(int svc) throws ChannelException {
         if ( getNext()!=null ) getNext().start(svc);
-        // register jmx
-        JmxRegistry jmxRegistry = JmxRegistry.getRegistry(channel);
-        if (jmxRegistry != null) this.oname = jmxRegistry.registerJmx(
-                ",component=Interceptor,interceptorName=" + getClass().getSimpleName(), this);
     }
 
     /**
@@ -183,11 +169,6 @@ public abstract class ChannelInterceptorBase implements ChannelInterceptor {
     @Override
     public void stop(int svc) throws ChannelException {
         if (getNext() != null) getNext().stop(svc);
-        if (oname != null) {
-            JmxRegistry.getRegistry(channel).unregisterJmx(oname);
-            oname = null;
-        }
-        channel = null;
     }
 
     @Override
@@ -195,22 +176,5 @@ public abstract class ChannelInterceptorBase implements ChannelInterceptor {
         //empty operation
     }
 
-    /**
-     * Return the channel that is related to this interceptor
-     * @return Channel
-     */
-    @Override
-    public Channel getChannel() {
-        return channel;
-    }
-
-    /**
-     * Set the channel that is related to this interceptor
-     * @param channel The channel
-     */
-    @Override
-    public void setChannel(Channel channel) {
-        this.channel = channel;
-    }
 
 }

@@ -23,7 +23,6 @@ import org.apache.coyote.InputBuffer;
 import org.apache.coyote.Request;
 import org.apache.coyote.http11.InputFilter;
 import org.apache.tomcat.util.buf.ByteChunk;
-import org.apache.tomcat.util.net.ApplicationBufferHandler;
 
 /**
  * Void input filter, which returns -1 when attempting a read. Used with a GET,
@@ -48,10 +47,22 @@ public class VoidInputFilter implements InputFilter {
     }
 
 
+    // ----------------------------------------------------- Instance Variables
+
+    // Tracks if an attempt has been made to read data
+    private boolean read = false;
+
+
     // ---------------------------------------------------- InputBuffer Methods
 
+    /**
+     * Write some bytes.
+     *
+     * @return number of bytes written by the filter
+     */
     @Override
-    public int doRead(ApplicationBufferHandler handler) throws IOException {
+    public int doRead(ByteChunk chunk, Request req) throws IOException {
+        read = true;
         return -1;
     }
 
@@ -81,7 +92,7 @@ public class VoidInputFilter implements InputFilter {
      */
     @Override
     public void recycle() {
-        // NOOP
+        read = false;
     }
 
 
@@ -112,12 +123,16 @@ public class VoidInputFilter implements InputFilter {
 
     @Override
     public int available() {
-        return 0;
+        if (read) {
+            return 0;
+        } else {
+            return 1;
+        }
     }
 
 
     @Override
     public boolean isFinished() {
-        return true;
+        return read;
     }
 }

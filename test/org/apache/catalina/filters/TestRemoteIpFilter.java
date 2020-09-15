@@ -49,10 +49,9 @@ import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.connector.Request;
+import org.apache.catalina.connector.Response;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
-import org.apache.tomcat.unittest.TesterContext;
-import org.apache.tomcat.unittest.TesterResponse;
 import org.apache.tomcat.util.descriptor.web.FilterDef;
 import org.apache.tomcat.util.descriptor.web.FilterMap;
 
@@ -60,24 +59,18 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
 
     /**
      * Mock {@link FilterChain} to keep a handle on the passed
-     * {@link ServletRequest} and (@link ServletResponse}.
+     * {@link ServletRequest}.
      */
     public static class MockFilterChain implements FilterChain {
         private HttpServletRequest request;
-        private HttpServletResponse response;
 
         @Override
         public void doFilter(ServletRequest request, ServletResponse response) throws IOException, ServletException {
             this.request = (HttpServletRequest) request;
-            this.response = (HttpServletResponse) response;
         }
 
         public HttpServletRequest getRequest() {
             return request;
-        }
-
-        public HttpServletResponse getResponse() {
-            return response;
         }
     }
 
@@ -115,8 +108,9 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
      */
     public static class MockHttpServletRequest extends Request {
         public MockHttpServletRequest() {
-            super(new Connector());
+            super();
             setCoyoteRequest(new org.apache.coyote.Request());
+            setConnector(new Connector());
         }
 
         public void setHeader(String name, String value) {
@@ -139,20 +133,6 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         @Override
         public Object getAttribute(String name) {
             return getCoyoteRequest().getAttributes().get(name);
-        }
-
-        @Override
-        public String getServerName() {
-            return "localhost";
-        }
-
-        @Override
-        public Context getContext() {
-            // Lazt init
-            if (super.getContext() == null) {
-                getMappingData().context = new TesterContext();
-            }
-            return super.getContext();
         }
     }
 
@@ -204,7 +184,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-proto", "http");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         boolean actualSecure = actualRequest.isSecure();
@@ -237,7 +217,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-proto", "http");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         boolean actualSecure = actualRequest.isSecure();
@@ -268,7 +248,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setRemoteHost("remote-host-original-value");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = request.getHeader("x-forwarded-for");
@@ -282,6 +262,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
 
         String actualRemoteHost = actualRequest.getRemoteHost();
         assertEquals("remoteHost", "remote-host-original-value", actualRemoteHost);
+
     }
 
     @Test
@@ -300,7 +281,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.addHeader("x-forwarded-for", "140.211.11.130, 192.168.0.10, 192.168.0.11");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -335,7 +316,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-for", "140.211.11.130, proxy1, proxy2");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -369,7 +350,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.addHeader("x-forwarded-for", "proxy2");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -402,7 +383,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-for", "140.211.11.130, proxy1, proxy2, 192.168.0.10, 192.168.0.11");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -434,7 +415,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-for", "140.211.11.130, proxy1, proxy2");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -466,7 +447,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-for", "140.211.11.130, proxy1, untrusted-proxy, proxy2");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         String actualXForwardedFor = actualRequest.getHeader("x-forwarded-for");
@@ -502,8 +483,8 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         }
     }
 
-    private MockFilterChain testRemoteIpFilter(FilterDef filterDef, Request request)
-            throws LifecycleException, IOException, ServletException {
+    private HttpServletRequest testRemoteIpFilter(FilterDef filterDef, Request request) throws LifecycleException, IOException,
+            ServletException {
         Tomcat tomcat = getTomcatInstance();
         Context root = tomcat.addContext("", TEMP_DIR);
 
@@ -515,7 +496,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
 
         FilterMap filterMap = new FilterMap();
         filterMap.setFilterName(RemoteIpFilter.class.getName());
-        filterMap.addURLPatternDecoded("*");
+        filterMap.addURLPattern("*");
         root.addFilterMap(filterMap);
 
         getTomcatInstance().start();
@@ -523,10 +504,8 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         MockFilterChain filterChain = new MockFilterChain();
 
         // TEST
-        TesterResponse response = new TesterResponse();
-        response.setRequest(request);
-        remoteIpFilter.doFilter(request, response, filterChain);
-        return filterChain;
+        remoteIpFilter.doFilter(request, new Response(), filterChain);
+        return filterChain.getRequest();
     }
 
     @Test
@@ -543,7 +522,8 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         request.setHeader("x-forwarded-proto", "http");
 
         // TEST
-        HttpServletRequest actualRequest = testRemoteIpFilter(filterDef, request).getRequest();
+        HttpServletRequest actualRequest =
+                testRemoteIpFilter(filterDef, request);
 
         // VERIFY
         Assert.assertEquals("org.apache.catalina.AccessLog.ServerPort",
@@ -559,7 +539,7 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
                 actualRequest.getAttribute(AccessLog.REMOTE_HOST_ATTRIBUTE));
     }
 
-    /*
+    /**
      * Test {@link RemoteIpFilter} in Tomcat standalone server
      */
     @Test
@@ -582,13 +562,13 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
 
         FilterMap filterMap = new FilterMap();
         filterMap.setFilterName(RemoteIpFilter.class.getName());
-        filterMap.addURLPatternDecoded("*");
+        filterMap.addURLPattern("*");
         root.addFilterMap(filterMap);
 
         MockHttpServlet mockServlet = new MockHttpServlet();
 
         Tomcat.addServlet(root, mockServlet.getClass().getName(), mockServlet);
-        root.addServletMappingDecoded("/test", mockServlet.getClass().getName());
+        root.addServletMapping("/test", mockServlet.getClass().getName());
 
         getTomcatInstance().start();
 
@@ -601,11 +581,12 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         httpURLConnection.addRequestProperty("x-forwarded-proto", "https");
 
         // VALIDATE
+
         Assert.assertEquals(HttpURLConnection.HTTP_OK, httpURLConnection.getResponseCode());
         HttpServletRequest request = mockServlet.getRequest();
         Assert.assertNotNull(request);
 
-        // VALIDATE X-FORWARDED-FOR
+        // VALIDATE X-FOWARDED-FOR
         Assert.assertEquals(expectedRemoteAddr, request.getRemoteAddr());
         Assert.assertEquals(expectedRemoteAddr, request.getRemoteHost());
 
@@ -613,5 +594,6 @@ public class TestRemoteIpFilter extends TomcatBaseTest {
         Assert.assertTrue(request.isSecure());
         Assert.assertEquals("https", request.getScheme());
         Assert.assertEquals(443, request.getServerPort());
+
     }
 }

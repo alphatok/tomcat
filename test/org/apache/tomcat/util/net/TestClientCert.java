@@ -20,10 +20,8 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Assume;
 import org.junit.Test;
 
-import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
 import org.apache.tomcat.util.buf.ByteChunk;
@@ -36,41 +34,19 @@ import org.apache.tomcat.util.buf.ByteChunk;
 public class TestClientCert extends TomcatBaseTest {
 
     @Test
-    public void testClientCertGetWithoutPreemptive() throws Exception {
-        doTestClientCertGet(false);
-    }
-
-    @Test
-    public void testClientCertGetWithPreemptive() throws Exception {
-        doTestClientCertGet(true);
-    }
-
-    private void doTestClientCertGet(boolean preemptive) throws Exception {
-        Assume.assumeTrue("SSL renegotiation has to be supported for this test",
-                TesterSupport.isRenegotiationSupported(getTomcatInstance()));
-
-        if (preemptive) {
-            Tomcat tomcat = getTomcatInstance();
-            // Only one context deployed
-            Context c = (Context) tomcat.getHost().findChildren()[0];
-            // Enable pre-emptive auth
-            c.setPreemptiveAuthentication(true);
+    public void testClientCertGet() throws Exception {
+        if (!TesterSupport.isRenegotiationSupported(getTomcatInstance())) {
+            return;
         }
-
-        getTomcatInstance().start();
 
         // Unprotected resource
         ByteChunk res =
                 getUrl("https://localhost:" + getPort() + "/unprotected");
-        if (preemptive) {
-            assertEquals("OK-" + TesterSupport.ROLE, res.toString());
-        } else {
-            assertEquals("OK", res.toString());
-        }
+        assertEquals("OK", res.toString());
 
         // Protected resource
         res = getUrl("https://localhost:" + getPort() + "/protected");
-        assertEquals("OK-" + TesterSupport.ROLE, res.toString());
+        assertEquals("OK", res.toString());
     }
 
     @Test
@@ -96,10 +72,9 @@ public class TestClientCert extends TomcatBaseTest {
 
     private void doTestClientCertPost(int bodySize, boolean expectProtectedFail)
             throws Exception {
-        Assume.assumeTrue("SSL renegotiation has to be supported for this test",
-                TesterSupport.isRenegotiationSupported(getTomcatInstance()));
-
-        getTomcatInstance().start();
+        if (!TesterSupport.isRenegotiationSupported(getTomcatInstance())) {
+            return;
+        }
 
         byte[] body = new byte[bodySize];
         Arrays.fill(body, TesterSupport.DATA);
@@ -122,11 +97,19 @@ public class TestClientCert extends TomcatBaseTest {
 
     @Override
     public void setUp() throws Exception {
+        if (!TesterSupport.RFC_5746_SUPPORTED) {
+            // Make sure SSL renegotiation is not disabled in the JVM
+            System.setProperty("sun.security.ssl.allowUnsafeRenegotiation", "true");
+        }
+
         super.setUp();
 
         Tomcat tomcat = getTomcatInstance();
 
         TesterSupport.configureClientCertContext(tomcat);
+
+        // Start Tomcat
+        tomcat.start();
 
         TesterSupport.configureClientSsl();
     }

@@ -40,7 +40,8 @@ import org.apache.tomcat.util.res.StringManager;
 public abstract class PojoEndpointBase extends Endpoint {
 
     private static final Log log = LogFactory.getLog(PojoEndpointBase.class);
-    private static final StringManager sm = StringManager.getManager(PojoEndpointBase.class);
+    private static final StringManager sm =
+            StringManager.getManager(Constants.PACKAGE_NAME);
 
     private Object pojo;
     private Map<String,String> pathParameters;
@@ -51,14 +52,6 @@ public abstract class PojoEndpointBase extends Endpoint {
         PojoMethodMapping methodMapping = getMethodMapping();
         Object pojo = getPojo();
         Map<String,String> pathParameters = getPathParameters();
-
-        // Add message handlers before calling onOpen since that may trigger a
-        // message which in turn could trigger a response and/or close the
-        // session
-        for (MessageHandler mh : methodMapping.getMessageHandlers(pojo,
-                pathParameters, session, config)) {
-            session.addMessageHandler(mh);
-        }
 
         if (methodMapping.getOnOpen() != null) {
             try {
@@ -72,12 +65,20 @@ public abstract class PojoEndpointBase extends Endpoint {
                         "pojoEndpointBase.onOpenFail",
                         pojo.getClass().getName()), e);
                 handleOnOpenOrCloseError(session, e);
+                return;
             } catch (InvocationTargetException e) {
                 Throwable cause = e.getCause();
                 handleOnOpenOrCloseError(session, cause);
+                return;
             } catch (Throwable t) {
                 handleOnOpenOrCloseError(session, t);
+                return;
             }
+        }
+
+        for (MessageHandler mh : methodMapping.getMessageHandlers(pojo,
+                pathParameters, session, config)) {
+            session.addMessageHandler(mh);
         }
     }
 

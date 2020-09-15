@@ -17,9 +17,7 @@
 package org.apache.tomcat.websocket.server;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.websocket.Extension;
 import javax.websocket.HandshakeResponse;
@@ -58,13 +56,10 @@ public class DefaultServerEndpointConfigurator
     @Override
     public List<Extension> getNegotiatedExtensions(List<Extension> installed,
             List<Extension> requested) {
-        Set<String> installedNames = new HashSet<>();
-        for (Extension e : installed) {
-            installedNames.add(e.getName());
-        }
+
         List<Extension> result = new ArrayList<>();
         for (Extension request : requested) {
-            if (installedNames.contains(request.getName())) {
+            if (installed.contains(request)) {
                 result.add(request);
             }
         }

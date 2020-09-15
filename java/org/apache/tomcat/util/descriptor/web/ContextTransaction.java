@@ -21,7 +21,6 @@ package org.apache.tomcat.util.descriptor.web;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 
 /**
@@ -40,11 +39,10 @@ public class ContextTransaction implements Serializable {
     /**
      * Holder for our configured properties.
      */
-    private final Map<String, Object> properties = new HashMap<>();
+    private final HashMap<String, Object> properties = new HashMap<>();
 
     /**
-     * @param name The property name
-     * @return a configured property.
+     * Return a configured property.
      */
     public Object getProperty(String name) {
         return properties.get(name);
@@ -52,16 +50,13 @@ public class ContextTransaction implements Serializable {
 
     /**
      * Set a configured property.
-     * @param name The property name
-     * @param value The property value
      */
     public void setProperty(String name, Object value) {
         properties.put(name, value);
     }
 
     /**
-     * Remove a configured property.
-     * @param name The property name
+     * remove a configured property.
      */
     public void removeProperty(String name) {
         properties.remove(name);
@@ -69,7 +64,6 @@ public class ContextTransaction implements Serializable {
 
     /**
      * List properties.
-     * @return the property names iterator
      */
     public Iterator<String> listProperties() {
         return properties.keySet().iterator();
@@ -84,8 +78,10 @@ public class ContextTransaction implements Serializable {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("Transaction[");
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 }

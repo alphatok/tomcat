@@ -19,8 +19,8 @@ package org.apache.jasper.compiler;
 import java.io.CharArrayWriter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.security.AccessController;
 import java.util.Collection;
+import java.util.Iterator;
 
 import javax.servlet.jsp.tagext.TagFileInfo;
 import javax.servlet.jsp.tagext.TagInfo;
@@ -31,12 +31,10 @@ import javax.xml.parsers.SAXParserFactory;
 import org.apache.jasper.Constants;
 import org.apache.jasper.JasperException;
 import org.apache.jasper.JspCompilationContext;
-import org.apache.tomcat.Jar;
 import org.apache.tomcat.util.descriptor.DigesterFactory;
 import org.apache.tomcat.util.descriptor.LocalResolver;
 import org.apache.tomcat.util.descriptor.tld.TldResourcePath;
-import org.apache.tomcat.util.security.PrivilegedGetTccl;
-import org.apache.tomcat.util.security.PrivilegedSetTccl;
+import org.apache.tomcat.util.scan.Jar;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
@@ -131,7 +129,7 @@ class JspDocumentParser
                 Constants.XML_BLOCK_EXTERNAL_INIT_PARAM);
         boolean blockExternal;
         if (blockExternalString == null) {
-            blockExternal = true;
+            blockExternal = Constants.IS_SECURITY_ENABLED;
         } else {
             blockExternal = Boolean.parseBoolean(blockExternalString);
         }
@@ -238,12 +236,14 @@ class JspDocumentParser
      */
     private void addInclude(Node parent, Collection<String> files) throws SAXException {
         if (files != null) {
-            for (String file : files) {
+            Iterator<String> iter = files.iterator();
+            while (iter.hasNext()) {
+                String file = iter.next();
                 AttributesImpl attrs = new AttributesImpl();
                 attrs.addAttribute("", "file", "file", "CDATA", file);
 
                 // Create a dummy Include directive node
-                Node includeDir =
+                    Node includeDir =
                         new Node.IncludeDirective(attrs, null, // XXX
     parent);
                 processIncludeDirective(file, includeDir);
@@ -317,53 +317,55 @@ class JspDocumentParser
         startMark = new Mark(ctxt, path, locator.getLineNumber(),
                              locator.getColumnNumber());
 
-        /*
-         * Notice that due to a bug in the underlying SAX parser, the
-         * attributes must be enumerated in descending order.
-         */
-        boolean isTaglib = false;
-        for (int i = attrs.getLength() - 1; i >= 0; i--) {
-            isTaglib = false;
-            String attrQName = attrs.getQName(i);
-            if (!attrQName.startsWith("xmlns")) {
-                if (nonTaglibAttrs == null) {
-                    nonTaglibAttrs = new AttributesImpl();
-                }
-                nonTaglibAttrs.addAttribute(
-                    attrs.getURI(i),
-                    attrs.getLocalName(i),
-                    attrs.getQName(i),
-                    attrs.getType(i),
-                    attrs.getValue(i));
-            } else {
-                if (attrQName.startsWith("xmlns:jsp")) {
-                    isTaglib = true;
-                } else {
-                    String attrUri = attrs.getValue(i);
-                    // TaglibInfo for this uri already established in
-                    // startPrefixMapping
-                    isTaglib = pageInfo.hasTaglib(attrUri);
-                }
-                if (isTaglib) {
-                    if (taglibAttrs == null) {
-                        taglibAttrs = new AttributesImpl();
+        if (attrs != null) {
+            /*
+             * Notice that due to a bug in the underlying SAX parser, the
+             * attributes must be enumerated in descending order.
+             */
+            boolean isTaglib = false;
+            for (int i = attrs.getLength() - 1; i >= 0; i--) {
+                isTaglib = false;
+                String attrQName = attrs.getQName(i);
+                if (!attrQName.startsWith("xmlns")) {
+                    if (nonTaglibAttrs == null) {
+                        nonTaglibAttrs = new AttributesImpl();
                     }
-                    taglibAttrs.addAttribute(
+                    nonTaglibAttrs.addAttribute(
                         attrs.getURI(i),
                         attrs.getLocalName(i),
                         attrs.getQName(i),
                         attrs.getType(i),
                         attrs.getValue(i));
                 } else {
-                    if (nonTaglibXmlnsAttrs == null) {
-                        nonTaglibXmlnsAttrs = new AttributesImpl();
+                    if (attrQName.startsWith("xmlns:jsp")) {
+                        isTaglib = true;
+                    } else {
+                        String attrUri = attrs.getValue(i);
+                        // TaglibInfo for this uri already established in
+                        // startPrefixMapping
+                        isTaglib = pageInfo.hasTaglib(attrUri);
                     }
-                    nonTaglibXmlnsAttrs.addAttribute(
-                        attrs.getURI(i),
-                        attrs.getLocalName(i),
-                        attrs.getQName(i),
-                        attrs.getType(i),
-                        attrs.getValue(i));
+                    if (isTaglib) {
+                        if (taglibAttrs == null) {
+                            taglibAttrs = new AttributesImpl();
+                        }
+                        taglibAttrs.addAttribute(
+                            attrs.getURI(i),
+                            attrs.getLocalName(i),
+                            attrs.getQName(i),
+                            attrs.getType(i),
+                            attrs.getValue(i));
+                    } else {
+                        if (nonTaglibXmlnsAttrs == null) {
+                            nonTaglibXmlnsAttrs = new AttributesImpl();
+                        }
+                        nonTaglibXmlnsAttrs.addAttribute(
+                            attrs.getURI(i),
+                            attrs.getLocalName(i),
+                            attrs.getQName(i),
+                            attrs.getType(i),
+                            attrs.getValue(i));
+                    }
                 }
             }
         }
@@ -648,7 +650,7 @@ class JspDocumentParser
 
         if (current instanceof Node.NamedAttribute) {
             boolean isTrim = ((Node.NamedAttribute)current).isTrim();
-            Node.Nodes subElems = current.getBody();
+            Node.Nodes subElems = ((Node.NamedAttribute)current).getBody();
             for (int i = 0; subElems != null && i < subElems.size(); i++) {
                 Node subElem = subElems.getNode(i);
                 if (!(subElem instanceof Node.TemplateText)) {
@@ -1452,58 +1454,33 @@ class JspDocumentParser
         JspDocumentParser jspDocParser)
         throws Exception {
 
-        ClassLoader original;
-        if (Constants.IS_SECURITY_ENABLED) {
-            PrivilegedGetTccl pa = new PrivilegedGetTccl();
-            original = AccessController.doPrivileged(pa);
-        } else {
-            original = Thread.currentThread().getContextClassLoader();
-        }
-        try {
-            if (Constants.IS_SECURITY_ENABLED) {
-                PrivilegedSetTccl pa =
-                        new PrivilegedSetTccl(JspDocumentParser.class.getClassLoader());
-                AccessController.doPrivileged(pa);
-            } else {
-                Thread.currentThread().setContextClassLoader(
-                        JspDocumentParser.class.getClassLoader());
-            }
+        SAXParserFactory factory = SAXParserFactory.newInstance();
 
-            SAXParserFactory factory = SAXParserFactory.newInstance();
+        factory.setNamespaceAware(true);
+        // Preserve xmlns attributes
+        factory.setFeature(
+            "http://xml.org/sax/features/namespace-prefixes",
+            true);
 
-            factory.setNamespaceAware(true);
-            // Preserve xmlns attributes
+        factory.setValidating(validating);
+        if (validating) {
+            // Enable DTD validation
             factory.setFeature(
-                "http://xml.org/sax/features/namespace-prefixes",
-                true);
-
-            factory.setValidating(validating);
-            if (validating) {
-                // Enable DTD validation
-                factory.setFeature(
-                        "http://xml.org/sax/features/validation",
-                        true);
-                // Enable schema validation
-                factory.setFeature(
-                        "http://apache.org/xml/features/validation/schema",
-                        true);
-            }
-
-            // Configure the parser
-            SAXParser saxParser = factory.newSAXParser();
-            XMLReader xmlReader = saxParser.getXMLReader();
-            xmlReader.setProperty(LEXICAL_HANDLER_PROPERTY, jspDocParser);
-            xmlReader.setErrorHandler(jspDocParser);
-
-            return saxParser;
-        } finally {
-            if (Constants.IS_SECURITY_ENABLED) {
-                PrivilegedSetTccl pa = new PrivilegedSetTccl(original);
-                AccessController.doPrivileged(pa);
-            } else {
-                Thread.currentThread().setContextClassLoader(original);
-            }
+                    "http://xml.org/sax/features/validation",
+                    true);
+            // Enable schema validation
+            factory.setFeature(
+                    "http://apache.org/xml/features/validation/schema",
+                    true);
         }
+
+        // Configure the parser
+        SAXParser saxParser = factory.newSAXParser();
+        XMLReader xmlReader = saxParser.getXMLReader();
+        xmlReader.setProperty(LEXICAL_HANDLER_PROPERTY, jspDocParser);
+        xmlReader.setErrorHandler(jspDocParser);
+
+        return saxParser;
     }
 
     /*

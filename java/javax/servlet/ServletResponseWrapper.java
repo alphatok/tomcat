@@ -35,8 +35,6 @@ public class ServletResponseWrapper implements ServletResponse {
     /**
      * Creates a ServletResponse adaptor wrapping the given response object.
      *
-     * @param response The response to wrap
-     *
      * @throws java.lang.IllegalArgumentException
      *             if the response is null.
      */
@@ -49,8 +47,6 @@ public class ServletResponseWrapper implements ServletResponse {
 
     /**
      * Return the wrapped ServletResponse object.
-     *
-     * @return The wrapped ServletResponse object.
      */
     public ServletResponse getResponse() {
         return this.response;
@@ -58,8 +54,6 @@ public class ServletResponseWrapper implements ServletResponse {
 
     /**
      * Sets the response being wrapped.
-     *
-     * @param response The new response to wrap
      *
      * @throws java.lang.IllegalArgumentException
      *             if the response is null.
@@ -119,10 +113,8 @@ public class ServletResponseWrapper implements ServletResponse {
     }
 
     /**
-     * The default behavior of this method is to call setContentLengthLong(long len)
+     * The default behavior of this method is to call setContentLength(long len)
      * on the wrapped response object.
-     *
-     * @since Servlet 3.1
      */
     @Override
     public void setContentLengthLong(long length) {
@@ -222,12 +214,8 @@ public class ServletResponseWrapper implements ServletResponse {
     }
 
     /**
-     * TODO SERVLET3 - Add comments
-     * @param wrapped The response to compare to the wrapped response
-     * @return <code>true</code> if the response wrapped by this wrapper (or
-     *         series of wrappers) is the same as the supplied response,
-     *         otherwise <code>false</code>
-     * @since Servlet 3.0
+     * @param wrapped
+     * @since Servlet 3.0 TODO SERVLET3 - Add comments
      */
     public boolean isWrapperFor(ServletResponse wrapped) {
         if (response == wrapped) {
@@ -240,13 +228,8 @@ public class ServletResponseWrapper implements ServletResponse {
     }
 
     /**
-     * TODO SERVLET3 - Add comments
-     * @param wrappedType The class to compare to the class of the wrapped
-     *                    response
-     * @return <code>true</code> if the response wrapped by this wrapper (or
-     *         series of wrappers) is the same type as the supplied type,
-     *         otherwise <code>false</code>
-     * @since Servlet 3.0
+     * @param wrappedType
+     * @since Servlet 3.0 TODO SERVLET3 - Add comments
      */
     public boolean isWrapperFor(Class<?> wrappedType) {
         if (wrappedType.isAssignableFrom(response.getClass())) {

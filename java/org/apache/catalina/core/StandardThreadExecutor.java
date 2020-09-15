@@ -119,7 +119,6 @@ public class StandardThreadExecutor extends LifecycleMBeanBase
         taskqueue = new TaskQueue(maxQueueSize);
         TaskThreadFactory tf = new TaskThreadFactory(namePrefix,daemon,getThreadPriority());
         executor = new ThreadPoolExecutor(getMinSpareThreads(), getMaxThreads(), maxIdleTime, TimeUnit.MILLISECONDS,taskqueue, tf);
-        executor.setThreadRenewalDelay(threadRenewalDelay);
         if (prestartminSpareThreads) {
             executor.prestartAllCoreThreads();
         }

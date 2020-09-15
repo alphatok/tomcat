@@ -14,10 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.juli;
 
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
+
+
 
 /**
  * A more compact formatter.
@@ -39,6 +42,8 @@ import java.util.logging.LogRecord;
  */
 public class JdkLoggerFormatter extends Formatter {
 
+    private static final String LINE_SEP = System.getProperty("line.separator");
+
     // values from JDK Level
     public static final int LOG_LEVEL_TRACE  = 400;
     public static final int LOG_LEVEL_DEBUG  = 500;
@@ -56,8 +61,8 @@ public class JdkLoggerFormatter extends Formatter {
         String message=formatMessage(record);
 
 
-        if( name.indexOf('.') >= 0 )
-            name = name.substring(name.lastIndexOf('.') + 1);
+        if( name.indexOf(".") >= 0 )
+            name = name.substring(name.lastIndexOf(".") + 1);
 
         // Use a string buffer for better performance
         StringBuilder buf = new StringBuilder();
@@ -91,7 +96,7 @@ public class JdkLoggerFormatter extends Formatter {
 
         // Append stack trace if not null
         if(t != null) {
-            buf.append(System.lineSeparator());
+            buf.append(LINE_SEP);
 
             java.io.StringWriter sw= new java.io.StringWriter(1024);
             java.io.PrintWriter pw= new java.io.PrintWriter(sw);
@@ -100,8 +105,9 @@ public class JdkLoggerFormatter extends Formatter {
             buf.append(sw.toString());
         }
 
-        buf.append(System.lineSeparator());
+        buf.append(LINE_SEP);
         // Print to the appropriate destination
         return buf.toString();
     }
+
 }

@@ -33,11 +33,10 @@ public final class Ascii {
      */
     private static final boolean[] isDigit = new boolean[256];
 
-    private static final long OVERFLOW_LIMIT = Long.MAX_VALUE / 10;
-
     /*
      * Initialize character translation and type tables.
      */
+
     static {
         for (int i = 0; i < 256; i++) {
             toLower[i] = (byte)i;
@@ -56,16 +55,14 @@ public final class Ascii {
 
     /**
      * Returns the lower case equivalent of the specified ASCII character.
-     * @param c The char
-     * @return the lower case equivalent char
      */
+
     public static int toLower(int c) {
         return toLower[c & 0xff] & 0xff;
     }
 
     /**
-     * @return <code>true</code> if the specified ASCII character is a digit.
-     * @param c The char
+     * Returns true if the specified ASCII character is a digit.
      */
     private static boolean isDigit(int c) {
         return isDigit[c & 0xff];
@@ -76,7 +73,6 @@ public final class Ascii {
      * @param b the bytes to parse
      * @param off the start offset of the bytes
      * @param len the length of the bytes
-     * @return the long value
      * @exception NumberFormatException if the long format was invalid
      */
     public static long parseLong(byte[] b, int off, int len)
@@ -89,12 +85,19 @@ public final class Ascii {
         }
 
         long n = c - '0';
+        long m;
+
         while (--len > 0) {
-            if (isDigit(c = b[off++]) &&
-                    (n < OVERFLOW_LIMIT || (n == OVERFLOW_LIMIT && (c - '0') < 8))) {
-                n = n * 10 + c - '0';
-            } else {
+            if (!isDigit(c = b[off++])) {
                 throw new NumberFormatException();
+            }
+            m = n * 10 + c - '0';
+
+            if (m < n) {
+                // Overflow
+                throw new NumberFormatException();
+            } else {
+                n = m;
             }
         }
 

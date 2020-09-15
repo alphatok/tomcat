@@ -27,7 +27,6 @@ import java.security.ProtectionDomain;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.After;
@@ -70,7 +69,7 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
 
     private Tomcat tomcat;
     private Context context;
-    private WebappClassLoaderBase loader;
+    private WebappClassLoader loader;
 
     @Before
     @Override
@@ -84,9 +83,9 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
 
         ClassLoader loader = this.context.getLoader().getClassLoader();
         assertNotNull("The class loader should not be null.", loader);
-        assertTrue("The class loader is not correct.", loader instanceof WebappClassLoaderBase);
+        assertSame("The class loader is not correct.", WebappClassLoader.class, loader.getClass());
 
-        this.loader = (WebappClassLoaderBase) loader;
+        this.loader = (WebappClassLoader) loader;
 
     }
 
@@ -251,7 +250,7 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
         result = invokeDoMethodOnClass(this.loader, "TesterUnweavedClass");
         assertEquals("The second result is not correct.", "Hello, Weaver #2!", result);
 
-        WebappClassLoaderBase copiedLoader = (WebappClassLoaderBase) this.loader.copyWithoutTransformers();
+        WebappClassLoader copiedLoader = this.loader.copyWithoutTransformers();
 
         result = invokeDoMethodOnClass(copiedLoader, "TesterNeverWeavedClass");
         assertEquals("The third result is not correct.", "This will never be weaved.", result);
@@ -265,6 +264,9 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
         assertEquals("getClearReferencesLogFactoryRelease did not match.",
                 Boolean.valueOf(this.loader.getClearReferencesLogFactoryRelease()),
                 Boolean.valueOf(copiedLoader.getClearReferencesLogFactoryRelease()));
+        assertEquals("getClearReferencesStatic did not match.",
+                Boolean.valueOf(this.loader.getClearReferencesStatic()),
+                Boolean.valueOf(copiedLoader.getClearReferencesStatic()));
         assertEquals("getClearReferencesStopThreads did not match.",
                 Boolean.valueOf(this.loader.getClearReferencesStopThreads()),
                 Boolean.valueOf(copiedLoader.getClearReferencesStopThreads()));
@@ -283,21 +285,26 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
     }
 
     private static void copyResource(String name, File file) throws Exception {
-        ClassLoader cl = TestWebappClassLoaderWeaving.class.getClassLoader();
-        try (InputStream is = cl.getResourceAsStream(name)) {
-            if (is == null) {
-                throw new IOException("Resource " + name + " not found on classpath.");
-            }
 
-            try (FileOutputStream os = new FileOutputStream(file)) {
-                for (int b = is.read(); b >= 0; b = is.read()) {
-                    os.write(b);
-                }
-            }
+        InputStream is = TestWebappClassLoaderWeaving.class.getClassLoader()
+                .getResourceAsStream(name);
+        if (is == null) {
+            throw new IOException("Resource " + name + " not found on classpath.");
         }
+
+        FileOutputStream os = new FileOutputStream(file);
+        try {
+            for (int b = is.read(); b >= 0; b = is.read()) {
+                os.write(b);
+            }
+        } finally {
+            is.close();
+            os.close();
+        }
+
     }
 
-    private static String invokeDoMethodOnClass(WebappClassLoaderBase loader, String className)
+    private static String invokeDoMethodOnClass(WebappClassLoader loader, String className)
             throws Exception {
 
         Class<?> c = loader.findClass("org.apache.catalina.loader." + className);
@@ -386,14 +393,14 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
      * and run this main method.
      */
     public static void main(String... arguments) throws Exception {
-        ClassLoader cl = TestWebappClassLoaderWeaving.class.getClassLoader();
-        try (InputStream input = cl.getResourceAsStream(
-                "org/apache/catalina/loader/TesterUnweavedClass.class")) {
+        InputStream input = TestWebappClassLoaderWeaving.class.getClassLoader()
+                .getResourceAsStream("org/apache/catalina/loader/TesterUnweavedClass.class");
 
-            StringBuilder builder = new StringBuilder();
-            builder.append("            ");
+        StringBuilder builder = new StringBuilder();
+        builder.append("            ");
 
-            System.out.println("    private static final byte[] WEAVED_REPLACEMENT_1 = new byte[] {");
+        System.out.println("    private static final byte[] WEAVED_REPLACEMENT_1 = new byte[] {");
+        try {
             for (int i = 0, b = input.read(); b >= 0; i++, b = input.read()) {
                 String value = "" + ((byte)b);
                 if (builder.length() + value.length() > 97) {
@@ -409,6 +416,8 @@ public class TestWebappClassLoaderWeaving extends TomcatBaseTest {
                 }
             }
             System.out.println(builder.toString());
+        } finally {
+            input.close();
         }
         System.out.println("    }");
     }

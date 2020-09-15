@@ -28,7 +28,6 @@ import javax.el.ELException;
 import javax.el.MethodNotFoundException;
 
 import org.apache.el.lang.ELSupport;
-import org.apache.el.lang.EvaluationContext;
 
 
 /**
@@ -77,12 +76,9 @@ public class ReflectionUtil {
     }
 
     /**
-     * Converts an array of Class names to Class types.
-     * @param s  The array of class names
-     * @return An array of Class instance where the element at index i in the
-     *         result is an instance of the class with the name at index i in
-     *         the input
-     * @throws ClassNotFoundException If a class of a given name cannot be found
+     * Converts an array of Class names to Class types
+     * @param s
+     * @throws ClassNotFoundException
      */
     public static Class<?>[] toTypeArray(String[] s) throws ClassNotFoundException {
         if (s == null)
@@ -95,10 +91,8 @@ public class ReflectionUtil {
     }
 
     /**
-     * Converts an array of Class types to Class names.
-     * @param c The array of class instances
-     * @return An array of Class names where the element at index i in the
-     *         result is the name of the class instance at index i in the input
+     * Converts an array of Class types to Class names
+     * @param c
      */
     public static String[] toTypeNameArray(Class<?>[] c) {
         if (c == null)
@@ -112,21 +106,19 @@ public class ReflectionUtil {
 
     /**
      * Returns a method based on the criteria.
-     * @param ctx the context in which the expression is being evaluated
      * @param base the object that owns the method
      * @param property the name of the method
      * @param paramTypes the parameter types to use
      * @param paramValues the parameter values
      * @return the method specified
-     * @throws MethodNotFoundException If a method cannot be found that matches
-     *         the given criteria
+     * @throws MethodNotFoundException
      */
     /*
      * This class duplicates code in javax.el.Util. When making changes keep
      * the code in sync.
      */
     @SuppressWarnings("null")
-    public static Method getMethod(EvaluationContext ctx, Object base, Object property,
+    public static Method getMethod(Object base, Object property,
             Class<?>[] paramTypes, Object[] paramValues)
             throws MethodNotFoundException {
         if (base == null || property == null) {
@@ -146,7 +138,7 @@ public class ReflectionUtil {
         }
 
         Method[] methods = base.getClass().getMethods();
-        Map<Method,MatchResult> candidates = new HashMap<>();
+        Map<Method,Integer> candidates = new HashMap<>();
 
         for (Method m : methods) {
             if (!m.getName().equals(methodName)) {
@@ -171,8 +163,6 @@ public class ReflectionUtil {
 
             // Check the parameters match
             int exactMatch = 0;
-            int assignableMatch = 0;
-            int coercibleMatch = 0;
             boolean noMatch = false;
             for (int i = 0; i < mParamCount; i++) {
                 // Can't be null
@@ -181,16 +171,12 @@ public class ReflectionUtil {
                 } else if (i == (mParamCount - 1) && m.isVarArgs()) {
                     Class<?> varType = mParamTypes[i].getComponentType();
                     for (int j = i; j < paramCount; j++) {
-                        if (isAssignableFrom(paramTypes[j], varType)) {
-                            assignableMatch++;
-                        } else {
-                            if (paramValues == null || j >= paramValues.length) {
+                        if (!isAssignableFrom(paramTypes[j], varType)) {
+                            if (paramValues == null) {
                                 noMatch = true;
                                 break;
                             } else {
-                                if (isCoercibleFrom(ctx, paramValues[j], varType)) {
-                                    coercibleMatch++;
-                                } else {
+                                if (!isCoercibleFrom(paramValues[j], varType)) {
                                     noMatch = true;
                                     break;
                                 }
@@ -200,16 +186,12 @@ public class ReflectionUtil {
                         // lead to a varArgs method matching when the result
                         // should be ambiguous
                     }
-                } else if (isAssignableFrom(paramTypes[i], mParamTypes[i])) {
-                    assignableMatch++;
-                } else {
-                    if (paramValues == null || i >= paramValues.length) {
+                } else if (!isAssignableFrom(paramTypes[i], mParamTypes[i])) {
+                    if (paramValues == null) {
                         noMatch = true;
                         break;
                     } else {
-                        if (isCoercibleFrom(ctx, paramValues[i], mParamTypes[i])) {
-                            coercibleMatch++;
-                        } else {
+                        if (!isCoercibleFrom(paramValues[i], mParamTypes[i])) {
                             noMatch = true;
                             break;
                         }
@@ -223,30 +205,29 @@ public class ReflectionUtil {
             // If a method is found where every parameter matches exactly,
             // return it
             if (exactMatch == paramCount) {
-                return getMethod(base.getClass(), m);
+                getMethod(base.getClass(), m);
             }
 
-            candidates.put(m, new MatchResult(
-                    exactMatch, assignableMatch, coercibleMatch, m.isBridge()));
+            candidates.put(m, Integer.valueOf(exactMatch));
         }
 
         // Look for the method that has the highest number of parameters where
         // the type matches exactly
-        MatchResult bestMatch = new MatchResult(0, 0, 0, false);
+        int bestMatch = 0;
         Method match = null;
         boolean multiple = false;
-        for (Map.Entry<Method, MatchResult> entry : candidates.entrySet()) {
-            int cmp = entry.getValue().compareTo(bestMatch);
-            if (cmp > 0 || match == null) {
-                bestMatch = entry.getValue();
+        for (Map.Entry<Method, Integer> entry : candidates.entrySet()) {
+            if (entry.getValue().intValue() > bestMatch ||
+                    match == null) {
+                bestMatch = entry.getValue().intValue();
                 match = entry.getKey();
                 multiple = false;
-            } else if (cmp == 0) {
+            } else if (entry.getValue().intValue() == bestMatch) {
                 multiple = true;
             }
         }
         if (multiple) {
-            if (bestMatch.getExact() == paramCount - 1) {
+            if (bestMatch == paramCount - 1) {
                 // Only one parameter is not an exact match - try using the
                 // super class
                 match = resolveAmbiguousMethod(candidates.keySet(), paramTypes);
@@ -383,11 +364,11 @@ public class ReflectionUtil {
      * This class duplicates code in javax.el.Util. When making changes keep
      * the code in sync.
      */
-    private static boolean isCoercibleFrom(EvaluationContext ctx, Object src, Class<?> target) {
+    private static boolean isCoercibleFrom(Object src, Class<?> target) {
         // TODO: This isn't pretty but it works. Significant refactoring would
         //       be required to avoid the exception.
         try {
-            ELSupport.coerceToType(ctx, src, target);
+            ELSupport.coerceToType(src, target);
         } catch (ELException e) {
             return false;
         }
@@ -449,83 +430,4 @@ public class ReflectionUtil {
         }
         return null;
     }
-
-    /*
-     * This class duplicates code in javax.el.Util. When making changes keep
-     * the code in sync.
-     */
-    private static class MatchResult implements Comparable<MatchResult> {
-
-        private final int exact;
-        private final int assignable;
-        private final int coercible;
-        private final boolean bridge;
-
-        public MatchResult(int exact, int assignable, int coercible, boolean bridge) {
-            this.exact = exact;
-            this.assignable = assignable;
-            this.coercible = coercible;
-            this.bridge = bridge;
-        }
-
-        public int getExact() {
-            return exact;
-        }
-
-        public int getAssignable() {
-            return assignable;
-        }
-
-        public int getCoercible() {
-            return coercible;
-        }
-
-        public boolean isBridge() {
-            return bridge;
-        }
-
-        @Override
-        public int compareTo(MatchResult o) {
-            int cmp = Integer.compare(this.getExact(), o.getExact());
-            if (cmp == 0) {
-                cmp = Integer.compare(this.getAssignable(), o.getAssignable());
-                if (cmp == 0) {
-                    cmp = Integer.compare(this.getCoercible(), o.getCoercible());
-                    if (cmp == 0) {
-                        // The nature of bridge methods is such that it actually
-                        // doesn't matter which one we pick as long as we pick
-                        // one. That said, pick the 'right' one (the non-bridge
-                        // one) anyway.
-                        cmp = Boolean.compare(o.isBridge(), this.isBridge());
-                    }
-                }
-            }
-            return cmp;
-        }
-
-        @Override
-        public boolean equals(Object o)
-        {
-            return o == this
-                    || (null != o
-                    && this.getClass().equals(o.getClass())
-                    && ((MatchResult)o).getExact() == this.getExact()
-                    && ((MatchResult)o).getAssignable() == this.getAssignable()
-                    && ((MatchResult)o).getCoercible() == this.getCoercible()
-                    && ((MatchResult)o).isBridge() == this.isBridge()
-                    )
-                    ;
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return (this.isBridge() ? 1 << 24 : 0)
-                    ^ this.getExact() << 16
-                    ^ this.getAssignable() << 8
-                    ^ this.getCoercible()
-                    ;
-        }
-    }
-
 }

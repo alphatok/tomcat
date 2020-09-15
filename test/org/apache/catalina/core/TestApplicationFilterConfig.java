@@ -37,11 +37,12 @@ public class TestApplicationFilterConfig extends TomcatBaseTest {
     public void testBug54170() throws Exception {
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
 
         Tomcat.addServlet(ctx, "HelloWorld", new HelloWorldServlet());
-        ctx.addServletMappingDecoded("/", "HelloWorld");
+        ctx.addServletMapping("/", "HelloWorld");
 
         // Add a filter with a name that should be escaped if used in a JMX
         // object name

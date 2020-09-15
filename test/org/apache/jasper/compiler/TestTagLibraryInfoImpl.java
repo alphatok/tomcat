@@ -16,11 +16,14 @@
  */
 package org.apache.jasper.compiler;
 
+import java.io.File;
+
 import javax.servlet.http.HttpServletResponse;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
 import org.apache.tomcat.util.buf.ByteChunk;
 
@@ -31,7 +34,12 @@ public class TestTagLibraryInfoImpl extends TomcatBaseTest {
 
     @Test
     public void testRelativeTldLocation() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir = new File("test/webapp");
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         ByteChunk res = new ByteChunk();
 

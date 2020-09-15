@@ -58,7 +58,6 @@ public class OS {
     /**
      * Get the name of the system default character set.
      * @param pool the pool to allocate the name from, if needed
-     * @return the encoding
      */
     public static native String defaultEncoding(long pool);
 
@@ -67,7 +66,6 @@ public class OS {
      * Defers to apr_os_default_encoding if the current locale's
      * data can't be retrieved on this system.
      * @param pool the pool to allocate the name from, if needed
-     * @return the encoding
      */
     public static native String localeEncoding(long pool);
 
@@ -75,7 +73,6 @@ public class OS {
      * Generate random bytes.
      * @param buf Buffer to fill with random bytes
      * @param len Length of buffer in bytes
-     * @return the operation status
      */
     public static native int random(byte [] buf, int len);
 
@@ -105,7 +102,6 @@ public class OS {
      * </PRE>
      * @param inf array that will be filled with system information.
      *            Array length must be at least 16.
-     * @return the operation status
      */
     public static native int info(long [] inf);
 

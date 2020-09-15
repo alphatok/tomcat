@@ -37,6 +37,7 @@ import org.apache.catalina.Context;
 import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
+import org.apache.tomcat.util.descriptor.web.ApplicationListener;
 import org.apache.tomcat.websocket.TestUtil;
 import org.apache.tomcat.websocket.pojo.TesterUtil.ServerConfigListener;
 import org.apache.tomcat.websocket.pojo.TesterUtil.SingletonConfigurator;
@@ -52,11 +53,13 @@ public class TestPojoEndpointBase extends TomcatBaseTest {
         ServerConfigListener.setPojoClazz(Bug54716.class);
 
         Tomcat tomcat = getTomcatInstance();
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
-        ctx.addApplicationListener(ServerConfigListener.class.getName());
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
+        ctx.addApplicationListener(new ApplicationListener(
+                ServerConfigListener.class.getName(), false));
         Tomcat.addServlet(ctx, "default", new DefaultServlet());
-        ctx.addServletMappingDecoded("/", "default");
+        ctx.addServletMapping("/", "default");
 
         WebSocketContainer wsContainer =
                 ContainerProvider.getWebSocketContainer();
@@ -83,11 +86,13 @@ public class TestPojoEndpointBase extends TomcatBaseTest {
         ServerConfigListener.setPojoClazz(OnOpenServerEndpoint.class);
 
         Tomcat tomcat = getTomcatInstance();
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
-        ctx.addApplicationListener(ServerConfigListener.class.getName());
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
+        ctx.addApplicationListener(new ApplicationListener(
+                ServerConfigListener.class.getName(), false));
         Tomcat.addServlet(ctx, "default", new DefaultServlet());
-        ctx.addServletMappingDecoded("/", "default");
+        ctx.addServletMapping("/", "default");
 
         WebSocketContainer wsContainer =
                 ContainerProvider.getWebSocketContainer();

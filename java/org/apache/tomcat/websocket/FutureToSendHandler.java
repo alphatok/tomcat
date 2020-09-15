@@ -25,15 +25,10 @@ import java.util.concurrent.TimeoutException;
 import javax.websocket.SendHandler;
 import javax.websocket.SendResult;
 
-import org.apache.tomcat.util.res.StringManager;
-
-
 /**
  * Converts a Future to a SendHandler.
  */
 class FutureToSendHandler implements Future<Void>, SendHandler {
-
-    private static final StringManager sm = StringManager.getManager(FutureToSendHandler.class);
 
     private final CountDownLatch latch = new CountDownLatch(1);
     private final WsSession wsSession;
@@ -101,8 +96,7 @@ class FutureToSendHandler implements Future<Void>, SendHandler {
 
         }
         if (retval == false) {
-            throw new TimeoutException(sm.getString("futureToSendHandler.timeout",
-                    Long.valueOf(timeout), unit.toString().toLowerCase()));
+            throw new TimeoutException();
         }
         if (result.getException() != null) {
             throw new ExecutionException(result.getException());

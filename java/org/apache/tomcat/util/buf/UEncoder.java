@@ -17,7 +17,6 @@
 package org.apache.tomcat.util.buf;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 
 /**
@@ -33,22 +32,6 @@ import java.util.BitSet;
  */
 public final class UEncoder {
 
-    public enum SafeCharsSet {
-        WITH_SLASH("/"), DEFAULT("");
-        private final BitSet safeChars;
-
-        private BitSet getSafeChars() {
-            return this.safeChars;
-        }
-
-        private SafeCharsSet(String additionalSafeChars) {
-            safeChars = initialSafeChars();
-            for (char c : additionalSafeChars.toCharArray()) {
-                safeChars.set(c);
-            }
-        }
-    }
-
     // Not static - the set may differ ( it's better than adding
     // an extra check for "/", "+", etc
     private BitSet safeChars=null;
@@ -57,14 +40,16 @@ public final class UEncoder {
     private CharChunk cb=null;
     private CharChunk output=null;
 
-    /**
-     * Create a UEncoder with an unmodifiable safe character set.
-     *
-     * @param safeCharsSet safe characters for this encoder
-     */
-    public UEncoder(SafeCharsSet safeCharsSet) {
-        this.safeChars = safeCharsSet.getSafeChars();
+    private final String ENCODING = "UTF8";
+
+    public UEncoder() {
+        initSafeChars();
     }
+
+    public void addSafeCharacter( char c ) {
+        safeChars.set( c );
+    }
+
 
    /**
     * URL Encode string, using a specified encoding.
@@ -72,9 +57,6 @@ public final class UEncoder {
     * @param s string to be encoded
     * @param start the beginning index, inclusive
     * @param end the ending index, exclusive
-    *
-    * @return A new CharChunk contained the URL encoded string
-    *
     * @throws IOException If an I/O error occurs
     */
    public CharChunk encodeURL(String s, int start, int end)
@@ -83,7 +65,7 @@ public final class UEncoder {
            bb = new ByteChunk(8); // small enough.
            cb = new CharChunk(2); // small enough.
            output = new CharChunk(64); // small enough.
-           c2b = new C2BConverter(StandardCharsets.UTF_8);
+           c2b = new C2BConverter(ENCODING);
        } else {
            bb.recycle();
            cb.recycle();
@@ -134,34 +116,33 @@ public final class UEncoder {
 
     // -------------------- Internal implementation --------------------
 
-    private static BitSet initialSafeChars() {
-        BitSet initialSafeChars=new BitSet(128);
+    private void initSafeChars() {
+        safeChars=new BitSet(128);
         int i;
         for (i = 'a'; i <= 'z'; i++) {
-            initialSafeChars.set(i);
+            safeChars.set(i);
         }
         for (i = 'A'; i <= 'Z'; i++) {
-            initialSafeChars.set(i);
+            safeChars.set(i);
         }
         for (i = '0'; i <= '9'; i++) {
-            initialSafeChars.set(i);
+            safeChars.set(i);
         }
         //safe
-        initialSafeChars.set('$');
-        initialSafeChars.set('-');
-        initialSafeChars.set('_');
-        initialSafeChars.set('.');
+        safeChars.set('$');
+        safeChars.set('-');
+        safeChars.set('_');
+        safeChars.set('.');
 
         // Dangerous: someone may treat this as " "
         // RFC1738 does allow it, it's not reserved
-        //    initialSafeChars.set('+');
+        //    safeChars.set('+');
         //extra
-        initialSafeChars.set('!');
-        initialSafeChars.set('*');
-        initialSafeChars.set('\'');
-        initialSafeChars.set('(');
-        initialSafeChars.set(')');
-        initialSafeChars.set(',');
-        return initialSafeChars;
+        safeChars.set('!');
+        safeChars.set('*');
+        safeChars.set('\'');
+        safeChars.set('(');
+        safeChars.set(')');
+        safeChars.set(',');
     }
 }

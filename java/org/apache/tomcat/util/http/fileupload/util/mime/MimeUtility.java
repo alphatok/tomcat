@@ -101,7 +101,7 @@ public final class MimeUtility {
     public static String decodeText(String text) throws UnsupportedEncodingException {
         // if the text contains any encoded tokens, those tokens will be marked with "=?".  If the
         // source string doesn't contain that sequent, no decoding is required.
-        if (!text.contains(ENCODED_TOKEN_MARKER)) {
+        if (text.indexOf(ENCODED_TOKEN_MARKER) < 0) {
             return text;
         }
 
@@ -214,7 +214,7 @@ public final class MimeUtility {
         }
 
         // pull out the character set information (this is the MIME name at this point).
-        String charset = word.substring(2, charsetPos).toLowerCase(Locale.ENGLISH);
+        String charset = word.substring(2, charsetPos).toLowerCase();
 
         // now pull out the encoding token the same way.
         int encodingPos = word.indexOf('?', charsetPos + 1);

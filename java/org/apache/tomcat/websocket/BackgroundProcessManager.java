@@ -34,7 +34,7 @@ public class BackgroundProcessManager {
     private static final Log log =
             LogFactory.getLog(BackgroundProcessManager.class);
     private static final StringManager sm =
-            StringManager.getManager(BackgroundProcessManager.class);
+            StringManager.getManager(Constants.PACKAGE_NAME);
     private static final BackgroundProcessManager instance;
 
 
@@ -93,27 +93,6 @@ public class BackgroundProcessManager {
                 ExceptionUtils.handleThrowable(t);
                 log.error(sm.getString(
                         "backgroundProcessManager.processFailed"), t);
-            }
-        }
-    }
-
-
-    /*
-     * For unit testing.
-     */
-    int getProcessCount() {
-        synchronized (processesLock) {
-            return processes.size();
-        }
-    }
-
-
-    void shutdown() {
-        synchronized (processesLock) {
-            processes.clear();
-            if (wsBackgroundThread != null) {
-                wsBackgroundThread.halt();
-                wsBackgroundThread = null;
             }
         }
     }

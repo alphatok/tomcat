@@ -20,12 +20,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.tomcat.Jar;
 import org.apache.tomcat.JarScannerCallback;
+import org.apache.tomcat.util.scan.Jar;
+import org.apache.tomcat.util.scan.JarFactory;
 import org.xml.sax.InputSource;
 
 /**
@@ -48,10 +50,13 @@ public class FragmentJarScannerCallback implements JarScannerCallback {
         this.parseRequired = parseRequired;
     }
 
-
     @Override
-    public void scan(Jar jar, String webappPath, boolean isWebapp) throws IOException {
+    public void scan(JarURLConnection jarConn, String webappPath, boolean isWebapp)
+            throws IOException {
 
+        URL url = jarConn.getURL();
+        URL resourceURL = jarConn.getJarFileURL();
+        Jar jar = null;
         InputStream is = null;
         WebXml fragment = new WebXml();
         fragment.setWebappJar(isWebapp);
@@ -63,6 +68,7 @@ public class FragmentJarScannerCallback implements JarScannerCallback {
             // web-fragment.xml files don't need to be parsed if they are never
             // going to be used.
             if (isWebapp && parseRequired) {
+                jar = JarFactory.newInstance(url);
                 is = jar.getInputStream(FRAGMENT_LOCATION);
             }
 
@@ -71,23 +77,25 @@ public class FragmentJarScannerCallback implements JarScannerCallback {
                 // distributable
                 fragment.setDistributable(true);
             } else {
-                String fragmentUrl = jar.getURL(FRAGMENT_LOCATION);
-                InputSource source = new InputSource(fragmentUrl);
+                InputSource source = new InputSource(
+                        "jar:" + resourceURL.toString() + "!/" + FRAGMENT_LOCATION);
                 source.setByteStream(is);
                 if (!webXmlParser.parseWebXml(source, fragment, true)) {
                     ok = false;
                 }
             }
         } finally {
-            fragment.setURL(jar.getJarFileURL());
+            if (jar != null) {
+                jar.close();
+            }
+            fragment.setURL(url);
             if (fragment.getName() == null) {
                 fragment.setName(fragment.getURL().toString());
             }
-            fragment.setJarName(extractJarFileName(jar.getJarFileURL()));
+            fragment.setJarName(extractJarFileName(url));
             fragments.put(fragment.getName(), fragment);
         }
     }
-
 
     private String extractJarFileName(URL input) {
         String url = input.toString();
@@ -100,24 +108,23 @@ public class FragmentJarScannerCallback implements JarScannerCallback {
         return url.substring(url.lastIndexOf('/') + 1);
     }
 
-
     @Override
     public void scan(File file, String webappPath, boolean isWebapp) throws IOException {
 
+        InputStream stream = null;
         WebXml fragment = new WebXml();
         fragment.setWebappJar(isWebapp);
         fragment.setDelegate(delegate);
 
-        File fragmentFile = new File(file, FRAGMENT_LOCATION);
         try {
+            File fragmentFile = new File(file, FRAGMENT_LOCATION);
             if (fragmentFile.isFile()) {
-                try (InputStream stream = new FileInputStream(fragmentFile)) {
-                    InputSource source =
-                        new InputSource(fragmentFile.toURI().toURL().toString());
-                    source.setByteStream(stream);
-                    if (!webXmlParser.parseWebXml(source, fragment, true)) {
-                        ok = false;
-                    }
+                stream = new FileInputStream(fragmentFile);
+                InputSource source =
+                    new InputSource(fragmentFile.toURI().toURL().toString());
+                source.setByteStream(stream);
+                if (!webXmlParser.parseWebXml(source, fragment, true)) {
+                    ok = false;
                 }
             } else {
                 // If there is no web.xml, normal folder no impact on

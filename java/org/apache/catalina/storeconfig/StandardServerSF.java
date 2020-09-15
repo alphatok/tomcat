@@ -19,6 +19,7 @@ package org.apache.catalina.storeconfig;
 
 import java.io.PrintWriter;
 
+import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleListener;
 import org.apache.catalina.Service;
 import org.apache.catalina.core.StandardServer;
@@ -53,13 +54,13 @@ public class StandardServerSF extends StoreFactoryBase {
     }
 
     /**
-     * Store the specified server element children.
+     * Store Children from this StandardServer description
      *
-     * @param aWriter Current output writer
-     * @param indent Indentation level
-     * @param aObject Server to store
-     * @param parentDesc The element description
-     * @throws Exception Configuration storing error
+     * @param aWriter
+     * @param indent
+     * @param aObject
+     * @param parentDesc
+     * @throws Exception
      */
     @Override
     public void storeChildren(PrintWriter aWriter, int indent, Object aObject,
@@ -67,7 +68,8 @@ public class StandardServerSF extends StoreFactoryBase {
         if (aObject instanceof StandardServer) {
             StandardServer server = (StandardServer) aObject;
             // Store nested <Listener> elements
-            LifecycleListener listeners[] = server.findLifecycleListeners();
+            LifecycleListener listeners[] = ((Lifecycle) server)
+                    .findLifecycleListeners();
             storeElementArray(aWriter, indent, listeners);
             /*LifecycleListener listener = null;
             for (int i = 0; listener == null && i < listeners.length; i++)

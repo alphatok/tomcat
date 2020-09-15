@@ -36,14 +36,12 @@ public class CachedResource implements WebResource {
     // based on profiler data.
     private static final long CACHE_ENTRY_SIZE = 500;
 
-    private final Cache cache;
     private final StandardRoot root;
     private final String webAppPath;
     private final long ttl;
     private final int objectMaxSizeBytes;
 
     private volatile WebResource webResource;
-    private volatile WebResource[] webResources;
     private volatile long nextCheck;
 
     private volatile Long cachedLastModified = null;
@@ -56,16 +54,15 @@ public class CachedResource implements WebResource {
     private volatile Long cachedContentLength = null;
 
 
-    public CachedResource(Cache cache, StandardRoot root, String path, long ttl,
+    public CachedResource(StandardRoot root, String path, long ttl,
             int objectMaxSizeBytes) {
-        this.cache = cache;
         this.root = root;
         this.webAppPath = path;
         this.ttl = ttl;
         this.objectMaxSizeBytes = objectMaxSizeBytes;
     }
 
-    protected boolean validateResource(boolean useClassLoaderResources) {
+    protected boolean validate(boolean useClassLoaderResources) {
         long now = System.currentTimeMillis();
 
         if (webResource == null) {
@@ -92,9 +89,8 @@ public class CachedResource implements WebResource {
             return true;
         }
 
-        WebResource webResourceInternal = root.getResourceInternal(
-                webAppPath, useClassLoaderResources);
-        if (!webResource.exists() && webResourceInternal.exists()) {
+        if (!webResource.exists() && root.getResourceInternal(
+                webAppPath, useClassLoaderResources).exists()) {
             return false;
         }
 
@@ -105,37 +101,8 @@ public class CachedResource implements WebResource {
             return false;
         }
 
-        // Has a resource been inserted / removed in a different resource set
-        if (webResource.getLastModified() != webResourceInternal.getLastModified() ||
-                webResource.getContentLength() != webResourceInternal.getContentLength()) {
-            return false;
-        }
-
         nextCheck = ttl + now;
         return true;
-    }
-
-    protected boolean validateResources(boolean useClassLoaderResources) {
-        long now = System.currentTimeMillis();
-
-        if (webResources == null) {
-            synchronized (this) {
-                if (webResources == null) {
-                    webResources = root.getResourcesInternal(
-                            webAppPath, useClassLoaderResources);
-                    nextCheck = ttl + now;
-                    return true;
-                }
-            }
-        }
-
-        if (now < nextCheck) {
-            return true;
-        }
-
-        // At this point, always expire the entry as re-populating it is likely
-        // to be as expensive as validating it.
-        return false;
     }
 
     protected long getNextCheck() {
@@ -205,11 +172,7 @@ public class CachedResource implements WebResource {
 
     @Override
     public boolean delete() {
-        boolean deleteResult = webResource.delete();
-        if (deleteResult) {
-            cache.removeCacheEntry(webAppPath);
-        }
-        return deleteResult;
+        return webResource.delete();
     }
 
     @Override
@@ -264,7 +227,7 @@ public class CachedResource implements WebResource {
 
     @Override
     public InputStream getInputStream() {
-        byte[] content = getContent();
+        byte[] content = cachedContent;
         if (content == null) {
             // Can't cache InputStreams
             return webResource.getInputStream();
@@ -296,11 +259,6 @@ public class CachedResource implements WebResource {
     }
 
     @Override
-    public URL getCodeBase() {
-        return webResource.getCodeBase();
-    }
-
-    @Override
     public Certificate[] getCertificates() {
         return webResource.getCertificates();
     }
@@ -317,10 +275,6 @@ public class CachedResource implements WebResource {
 
     WebResource getWebResource() {
         return webResource;
-    }
-
-    WebResource[] getWebResources() {
-        return webResources;
     }
 
     // Assume that the cache entry will always include the content unless the

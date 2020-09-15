@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 public class ListELResolver extends ELResolver {
 
@@ -41,7 +40,9 @@ public class ListELResolver extends ELResolver {
 
     @Override
     public Class<?> getType(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
 
         if (base instanceof List<?>) {
             context.setPropertyResolved(base, property);
@@ -59,7 +60,9 @@ public class ListELResolver extends ELResolver {
 
     @Override
     public Object getValue(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
 
         if (base instanceof List<?>) {
             context.setPropertyResolved(base, property);
@@ -77,7 +80,9 @@ public class ListELResolver extends ELResolver {
     @Override
     public void setValue(ELContext context, Object base, Object property,
             Object value) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
 
         if (base instanceof List<?>) {
             context.setPropertyResolved(base, property);
@@ -102,7 +107,9 @@ public class ListELResolver extends ELResolver {
 
     @Override
     public boolean isReadOnly(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
 
         if (base instanceof List<?>) {
             context.setPropertyResolved(base, property);
@@ -144,7 +151,7 @@ public class ListELResolver extends ELResolver {
             return ((Character) property).charValue();
         }
         if (property instanceof Boolean) {
-            return ((Boolean) property).booleanValue() ? 1 : 0;
+            return (((Boolean) property).booleanValue() ? 1 : 0);
         }
         if (property instanceof String) {
             return Integer.parseInt((String) property);

@@ -37,22 +37,23 @@ public interface Service extends Lifecycle {
 
     // ------------------------------------------------------------- Properties
 
-    /**
-     * @return the <code>Engine</code> that handles requests for all
-     * <code>Connectors</code> associated with this Service.
-     */
-    public Engine getContainer();
 
     /**
-     * Set the <code>Engine</code> that handles requests for all
+     * Return the <code>Container</code> that handles requests for all
+     * <code>Connectors</code> associated with this Service.
+     */
+    public Container getContainer();
+
+    /**
+     * Set the <code>Container</code> that handles requests for all
      * <code>Connectors</code> associated with this Service.
      *
-     * @param engine The new Engine
+     * @param container The new Container
      */
-    public void setContainer(Engine engine);
+    public void setContainer(Container container);
 
     /**
-     * @return the name of this Service.
+     * Return the name of this Service.
      */
     public String getName();
 
@@ -64,7 +65,7 @@ public interface Service extends Lifecycle {
     public void setName(String name);
 
     /**
-     * @return the <code>Server</code> with which we are associated (if any).
+     * Return the <code>Server</code> with which we are associated (if any).
      */
     public Server getServer();
 
@@ -76,7 +77,7 @@ public interface Service extends Lifecycle {
     public void setServer(Server server);
 
     /**
-     * @return the parent class loader for this component. If not set, return
+     * Return the parent class loader for this component. If not set, return
      * {@link #getServer()} {@link Server#getParentClassLoader()}. If no server
      * has been set, return the system class loader.
      */
@@ -90,7 +91,7 @@ public interface Service extends Lifecycle {
     public void setParentClassLoader(ClassLoader parent);
 
     /**
-     * @return the domain under which this container will be / has been
+     * Obtain the domain under which this container will be / has been
      * registered.
      */
     public String getDomain();
@@ -108,8 +109,6 @@ public interface Service extends Lifecycle {
 
     /**
      * Find and return the set of Connectors associated with this Service.
-     *
-     * @return the set of associated Connectors
      */
     public Connector[] findConnectors();
 
@@ -148,7 +147,7 @@ public interface Service extends Lifecycle {
     public void removeExecutor(Executor ex);
 
     /**
-     * @return the mapper associated with this Service.
+     * The mapper associated with this Service.
      */
     Mapper getMapper();
 }

@@ -86,7 +86,7 @@ public class StoreFileMover {
     }
 
     /**
-     * @param string The file name
+     * @param string
      */
     public void setFilename(String string) {
         filename = string;
@@ -100,7 +100,7 @@ public class StoreFileMover {
     }
 
     /**
-     * @param string The encoding
+     * @param string
      */
     public void setEncoding(String string) {
         encoding = string;
@@ -108,9 +108,6 @@ public class StoreFileMover {
 
     /**
      * Calculate file objects for the old and new configuration files.
-     * @param basename The base path
-     * @param encoding The encoding of the file
-     * @param filename The file name
      */
     public StoreFileMover(String basename, String filename, String encoding) {
         setBasename(basename);
@@ -127,7 +124,7 @@ public class StoreFileMover {
     }
 
     /**
-     * Generate the Filename to new with TimeStamp.
+     * generate the Filename to new with TimeStamp
      */
     public void init() {
         String configFile = getFilename();
@@ -150,9 +147,9 @@ public class StoreFileMover {
     }
 
     /**
-     * Shuffle old-&gt;save and new-&gt;old.
+     * Shuffle old->save and new->old
      *
-     * @throws IOException a file operation error occurred
+     * @throws IOException
      */
     public void move() throws IOException {
         if (configOld.renameTo(configSave)) {
@@ -178,10 +175,10 @@ public class StoreFileMover {
     }
 
     /**
-     * Open an output writer for the new configuration file.
+     * Open an output writer for the new configuration file
      *
      * @return The writer
-     * @throws IOException Failed opening a writer to the new file
+     * @throws IOException
      */
     public PrintWriter getWriter() throws IOException {
         return new PrintWriter(new OutputStreamWriter(
@@ -189,7 +186,7 @@ public class StoreFileMover {
     }
 
     /**
-     * Time value for backup yyyy-mm-dd.hh-mm-ss.
+     * Time value for backup yyyy-mm-dd.hh-mm-ss
      *
      * @return The time
      */

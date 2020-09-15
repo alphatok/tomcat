@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,20 +40,20 @@ public class BeanELResolver extends ELResolver {
         "org.apache.el.BeanELResolver.CACHE_SIZE";
 
     static {
-        String cacheSizeStr;
         if (System.getSecurityManager() == null) {
-            cacheSizeStr = System.getProperty(CACHE_SIZE_PROP, "1000");
+            CACHE_SIZE = Integer.parseInt(
+                    System.getProperty(CACHE_SIZE_PROP, "1000"));
         } else {
-            cacheSizeStr = AccessController.doPrivileged(
-                    new PrivilegedAction<String>() {
+            CACHE_SIZE = AccessController.doPrivileged(
+                    new PrivilegedAction<Integer>() {
 
                     @Override
-                    public String run() {
-                        return System.getProperty(CACHE_SIZE_PROP, "1000");
+                    public Integer run() {
+                        return Integer.valueOf(
+                                System.getProperty(CACHE_SIZE_PROP, "1000"));
                     }
-                });
+                }).intValue();
         }
-        CACHE_SIZE = Integer.parseInt(cacheSizeStr);
     }
 
     private final boolean readOnly;
@@ -72,7 +71,9 @@ public class BeanELResolver extends ELResolver {
 
     @Override
     public Class<?> getType(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base == null || property == null) {
             return null;
         }
@@ -83,7 +84,9 @@ public class BeanELResolver extends ELResolver {
 
     @Override
     public Object getValue(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base == null || property == null) {
             return null;
         }
@@ -92,9 +95,16 @@ public class BeanELResolver extends ELResolver {
         Method m = this.property(context, base, property).read(context);
         try {
             return m.invoke(base, (Object[]) null);
+        } catch (IllegalAccessException e) {
+            throw new ELException(e);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
-            Util.handleThrowable(cause);
+            if (cause instanceof ThreadDeath) {
+                throw (ThreadDeath) cause;
+            }
+            if (cause instanceof VirtualMachineError) {
+                throw (VirtualMachineError) cause;
+            }
             throw new ELException(Util.message(context, "propertyReadError",
                     base.getClass().getName(), property.toString()), cause);
         } catch (Exception e) {
@@ -105,7 +115,9 @@ public class BeanELResolver extends ELResolver {
     @Override
     public void setValue(ELContext context, Object base, Object property,
             Object value) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base == null || property == null) {
             return;
         }
@@ -120,9 +132,16 @@ public class BeanELResolver extends ELResolver {
         Method m = this.property(context, base, property).write(context);
         try {
             m.invoke(base, value);
+        } catch (IllegalAccessException e) {
+            throw new ELException(e);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
-            Util.handleThrowable(cause);
+            if (cause instanceof ThreadDeath) {
+                throw (ThreadDeath) cause;
+            }
+            if (cause instanceof VirtualMachineError) {
+                throw (VirtualMachineError) cause;
+            }
             throw new ELException(Util.message(context, "propertyWriteError",
                     base.getClass().getName(), property.toString()), cause);
         } catch (Exception e) {
@@ -136,7 +155,9 @@ public class BeanELResolver extends ELResolver {
     @Override
     public Object invoke(ELContext context, Object base, Object method,
             Class<?>[] paramTypes, Object[] params) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base == null || method == null) {
             return null;
         }
@@ -170,13 +191,16 @@ public class BeanELResolver extends ELResolver {
 
     @Override
     public boolean isReadOnly(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base == null || property == null) {
             return false;
         }
 
         context.setPropertyResolved(base, property);
-        return this.readOnly || this.property(context, base, property).isReadOnly();
+        return this.readOnly
+                || this.property(context, base, property).isReadOnly();
     }
 
     @Override
@@ -220,37 +244,12 @@ public class BeanELResolver extends ELResolver {
             try {
                 BeanInfo info = Introspector.getBeanInfo(this.type);
                 PropertyDescriptor[] pds = info.getPropertyDescriptors();
-                for (PropertyDescriptor pd: pds) {
-                    this.properties.put(pd.getName(), new BeanProperty(type, pd));
-                }
-                if (System.getSecurityManager() != null) {
-                    // When running with SecurityManager, some classes may be
-                    // not accessible, but have accessible interfaces.
-                    populateFromInterfaces(type);
+                for (int i = 0; i < pds.length; i++) {
+                    this.properties.put(pds[i].getName(), new BeanProperty(
+                            type, pds[i]));
                 }
             } catch (IntrospectionException ie) {
                 throw new ELException(ie);
-            }
-        }
-
-        private void populateFromInterfaces(Class<?> aClass) throws IntrospectionException {
-            Class<?> interfaces[] = aClass.getInterfaces();
-            if (interfaces.length > 0) {
-                for (Class<?> ifs : interfaces) {
-                    BeanInfo info = Introspector.getBeanInfo(ifs);
-                    PropertyDescriptor[] pds = info.getPropertyDescriptors();
-                    for (PropertyDescriptor pd : pds) {
-                        if (!this.properties.containsKey(pd.getName())) {
-                            this.properties.put(pd.getName(), new BeanProperty(
-                                    this.type, pd));
-                        }
-                    }
-                    populateFromInterfaces(ifs);
-                }
-            }
-            Class<?> superclass = aClass.getSuperclass();
-            if (superclass != null) {
-                populateFromInterfaces(superclass);
             }
         }
 
@@ -296,8 +295,8 @@ public class BeanELResolver extends ELResolver {
         }
 
         public boolean isReadOnly() {
-            return this.write == null &&
-                    (null == (this.write = Util.getMethod(this.owner, descriptor.getWriteMethod())));
+            return this.write == null
+                && (null == (this.write = Util.getMethod(this.owner, descriptor.getWriteMethod())));
         }
 
         public Method getWriteMethod() {

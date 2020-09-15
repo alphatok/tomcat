@@ -28,6 +28,7 @@ import java.security.CodeSource;
 import java.security.PermissionCollection;
 import java.security.Policy;
 import java.security.cert.Certificate;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,8 +38,8 @@ import javax.servlet.ServletContext;
 import org.apache.jasper.Constants;
 import org.apache.jasper.JspCompilationContext;
 import org.apache.jasper.Options;
-import org.apache.jasper.runtime.ExceptionUtils;
 import org.apache.jasper.servlet.JspServletWrapper;
+import org.apache.jasper.util.ExceptionUtils;
 import org.apache.jasper.util.FastRemovalDequeue;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -46,7 +47,7 @@ import org.apache.juli.logging.LogFactory;
 
 /**
  * Class for tracking JSP compile time file dependencies when the
- * &gt;%@include file="..."%&lt; directive is used.
+ * &060;%@include file="..."%&062; directive is used.
  *
  * A background thread periodically checks the files a JSP page
  * is dependent upon.  If a dependent file changes the JSP page
@@ -58,17 +59,15 @@ import org.apache.juli.logging.LogFactory;
  */
 public final class JspRuntimeContext {
 
-    /**
-     * Logger
-     */
+    // Logger
     private final Log log = LogFactory.getLog(JspRuntimeContext.class);
 
-    /**
+    /*
      * Counts how many times the webapp's JSPs have been reloaded.
      */
     private final AtomicInteger jspReloadCount = new AtomicInteger(0);
 
-    /**
+    /*
      * Counts how many times JSPs have been unloaded in this webapp.
      */
     private final AtomicInteger jspUnloadCount = new AtomicInteger(0);
@@ -81,7 +80,6 @@ public final class JspRuntimeContext {
      * Loads in any previously generated dependencies from file.
      *
      * @param context ServletContext for web application
-     * @param options The main Jasper options
      */
     public JspRuntimeContext(ServletContext context, Options options) {
 
@@ -162,7 +160,8 @@ public final class JspRuntimeContext {
     /**
      * Maps JSP pages to their JspServletWrapper's
      */
-    private final Map<String, JspServletWrapper> jsps = new ConcurrentHashMap<>();
+    private final Map<String, JspServletWrapper> jsps =
+            new ConcurrentHashMap<>();
 
     /**
      * Keeps JSP pages ordered by last access.
@@ -282,8 +281,9 @@ public final class JspRuntimeContext {
      * Process a "destroy" event for this web application context.
      */
     public void destroy() {
-        for (JspServletWrapper jspServletWrapper : jsps.values()) {
-            jspServletWrapper.destroy();
+        Iterator<JspServletWrapper> servlets = jsps.values().iterator();
+        while (servlets.hasNext()) {
+            servlets.next().destroy();
         }
     }
 
@@ -375,14 +375,14 @@ public final class JspRuntimeContext {
     }
 
     /**
-     * @return the classpath that is passed off to the Java compiler.
+     * The classpath that is passed off to the Java compiler.
      */
     public String getClassPath() {
         return classpath;
     }
 
     /**
-     * @return Last time the update background task has run
+     * Last time the update background task has run
      */
     public long getLastJspQueueUpdate() {
         return lastJspQueueUpdate;
@@ -394,11 +394,11 @@ public final class JspRuntimeContext {
 
     /**
      * Method used to initialize classpath for compiles.
-     * @return the compilation classpath
      */
     private String initClassPath() {
 
         StringBuilder cpath = new StringBuilder();
+        String sep = System.getProperty("path.separator");
 
         if (parentClassLoader instanceof URLClassLoader) {
             URL [] urls = ((URLClassLoader)parentClassLoader).getURLs();
@@ -413,7 +413,7 @@ public final class JspRuntimeContext {
                         // Need to decode the URL, primarily to convert %20
                         // sequences back to spaces
                         String decoded = URLDecoder.decode(urls[i].getPath(), "UTF-8");
-                        cpath.append(decoded + File.pathSeparator);
+                        cpath.append(decoded + sep);
                     } catch (UnsupportedEncodingException e) {
                         // All JREs are required to support UTF-8
                     }
@@ -421,7 +421,7 @@ public final class JspRuntimeContext {
             }
         }
 
-        cpath.append(options.getScratchDir() + File.pathSeparator);
+        cpath.append(options.getScratchDir() + sep);
 
         String cp = (String) context.getAttribute(Constants.SERVLET_CLASSPATH);
         if (cp == null || cp.equals("")) {
@@ -436,9 +436,7 @@ public final class JspRuntimeContext {
         return path;
     }
 
-    /**
-     * Helper class to allow initSecurity() to return two items
-     */
+    // Helper class to allow initSecurity() to return two items
     private static class SecurityHolder{
         private final CodeSource cs;
         private final PermissionCollection pc;
@@ -505,6 +503,35 @@ public final class JspRuntimeContext {
                 // Allow the JSP to access org.apache.jasper.runtime.HttpJspBase
                 permissions.add( new RuntimePermission(
                     "accessClassInPackage.org.apache.jasper.runtime") );
+
+                if (parentClassLoader instanceof URLClassLoader) {
+                    URL [] urls = ((URLClassLoader)parentClassLoader).getURLs();
+                    String jarUrl = null;
+                    String jndiUrl = null;
+                    for (int i=0; i<urls.length; i++) {
+                        if (jndiUrl == null
+                                && urls[i].toString().startsWith("jndi:") ) {
+                            jndiUrl = urls[i].toString() + "-";
+                        }
+                        if (jarUrl == null
+                                && urls[i].toString().startsWith("jar:jndi:")
+                                ) {
+                            jarUrl = urls[i].toString();
+                            jarUrl = jarUrl.substring(0,jarUrl.length() - 2);
+                            jarUrl = jarUrl.substring(0,
+                                     jarUrl.lastIndexOf('/')) + "/-";
+                        }
+                    }
+                    if (jarUrl != null) {
+                        permissions.add(
+                                new FilePermission(jarUrl,"read"));
+                        permissions.add(
+                                new FilePermission(jarUrl.substring(4),"read"));
+                    }
+                    if (jndiUrl != null)
+                        permissions.add(
+                                new FilePermission(jndiUrl,"read") );
+                }
             } catch(Exception e) {
                 context.log("Security Init for context failed",e);
             }

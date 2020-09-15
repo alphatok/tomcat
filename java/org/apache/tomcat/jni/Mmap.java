@@ -40,7 +40,6 @@ public class Mmap {
      * </PRE>
      * @param pool The pool to use when creating the mmap.
      * @return The newly created mmap'ed file.
-     * @throws Error Error creating memory mapping
      */
     public static native long create(long file, long offset, long size, int flag, long pool)
         throws Error;
@@ -50,7 +49,6 @@ public class Mmap {
      * @param mmap The mmap to duplicate.
      * @param pool The pool to use for new_mmap.
      * @return Duplicated mmap'ed file.
-     * @throws Error Error duplicating memory mapping
      */
     public static native long dup(long mmap, long pool)
         throws Error;
@@ -58,7 +56,6 @@ public class Mmap {
     /**
      * Remove a mmap'ed.
      * @param mm The mmap'ed file.
-     * @return the operation status
      */
     public static native int delete(long mm);
 
@@ -67,7 +64,6 @@ public class Mmap {
      * @param mm The mmap'ed file.
      * @param offset The offset to move to.
      * @return The pointer to the offset specified.
-     * @throws Error Error reading file
      */
     public static native long offset(long mm, long offset)
         throws Error;

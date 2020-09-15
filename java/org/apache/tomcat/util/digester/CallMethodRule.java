@@ -119,7 +119,7 @@ public class CallMethodRule extends Rule {
      */
     public CallMethodRule(String methodName) {
 
-        this(0, methodName, 0, null);
+        this(0, methodName, 0, (Class[]) null);
 
     }
 
@@ -159,7 +159,9 @@ public class CallMethodRule extends Rule {
             }
         } else {
             this.paramTypes = new Class[paramTypes.length];
-            System.arraycopy(paramTypes, 0, this.paramTypes, 0, this.paramTypes.length);
+            for (int i = 0; i < this.paramTypes.length; i++) {
+                this.paramTypes[i] = paramTypes[i];
+            }
         }
         this.paramClassNames = null;
     }
@@ -216,7 +218,6 @@ public class CallMethodRule extends Rule {
     /**
      * Should <code>MethodUtils.invokeExactMethod</code>
      * be used for the reflection.
-     * @return <code>true</code> if invokeExactMethod is used
      */
     public boolean getUseExactMatch() {
         return useExactMatch;
@@ -225,7 +226,6 @@ public class CallMethodRule extends Rule {
     /**
      * Set whether <code>MethodUtils.invokeExactMethod</code>
      * should be used for the reflection.
-     * @param useExactMatch The flag value
      */
     public void setUseExactMatch(boolean useExactMatch)
     {
@@ -349,6 +349,11 @@ public class CallMethodRule extends Rule {
 
             parameters = new Object[1];
             parameters[0] = bodyText;
+            if (paramTypes.length == 0) {
+                paramTypes = new Class[1];
+                paramTypes[0] = String.class;
+            }
+
         }
 
         // Construct the parameter values array we will need
@@ -450,6 +455,7 @@ public class CallMethodRule extends Rule {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("CallMethodRule[");
         sb.append("methodName=");
         sb.append(methodName);
@@ -466,7 +472,8 @@ public class CallMethodRule extends Rule {
         }
         sb.append("}");
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 
 

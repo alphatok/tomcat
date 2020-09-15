@@ -48,17 +48,21 @@ public interface CatalinaCluster extends Cluster {
     public void send(ClusterMessage msg, Member dest);
 
     /**
-     * @return <code>true</code> if the cluster has members.
+     * Returns that cluster has members.
      */
     public boolean hasMembers();
 
     /**
-     * @return an array containing all the members currently participating in the cluster.
+     * Returns all the members currently participating in the cluster.
+     *
+     * @return Member[]
      */
     public Member[] getMembers();
 
     /**
-     * @return the member that represents this node.
+     * Return the member that represents this node.
+     *
+     * @return Member
      */
     public Member getLocalMember();
 
@@ -77,25 +81,11 @@ public interface CatalinaCluster extends Cluster {
      */
     public Map<String,ClusterManager> getManagers();
 
-    /**
-     * Get Manager
-     * @param name The manager name
-     * @return The manager
-     */
     public Manager getManager(String name);
-
-    /**
-     * Get a new cluster name for a manager.
-     * @param name Override name (optional)
-     * @param manager The manager
-     * @return the manager name in the cluster
-     */
     public String getManagerName(String name, Manager manager);
-
     public Valve[] getValves();
 
     public void setChannel(Channel channel);
-
     public Channel getChannel();
 
 

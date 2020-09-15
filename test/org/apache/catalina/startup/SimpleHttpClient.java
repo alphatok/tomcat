@@ -46,18 +46,17 @@ public abstract class SimpleHttpClient {
     public static final String LF = "\n";
     public static final String CRLF = CR + LF;
 
-    public static final String INFO_100 = "HTTP/1.1 100 ";
-    public static final String OK_200 = "HTTP/1.1 200 ";
-    public static final String REDIRECT_302 = "HTTP/1.1 302 ";
-    public static final String REDIRECT_303 = "HTTP/1.1 303 ";
-    public static final String FAIL_400 = "HTTP/1.1 400 ";
-    public static final String FAIL_404 = "HTTP/1.1 404 ";
-    public static final String TIMEOUT_408 = "HTTP/1.1 408 ";
-    public static final String FAIL_413 = "HTTP/1.1 413 ";
-    public static final String FAIL_417 = "HTTP/1.1 417 ";
+    public static final String INFO_100 = "HTTP/1.1 100";
+    public static final String OK_200 = "HTTP/1.1 200";
+    public static final String REDIRECT_302 = "HTTP/1.1 302";
+    public static final String REDIRECT_303 = "HTTP/1.1 303";
+    public static final String FAIL_400 = "HTTP/1.1 400";
+    public static final String FAIL_404 = "HTTP/1.1 404";
+    public static final String TIMEOUT_408 = "HTTP/1.1 408";
+    public static final String FAIL_413 = "HTTP/1.1 413";
     public static final String FAIL_50X = "HTTP/1.1 50";
-    public static final String FAIL_500 = "HTTP/1.1 500 ";
-    public static final String FAIL_501 = "HTTP/1.1 501 ";
+    public static final String FAIL_500 = "HTTP/1.1 500";
+    public static final String FAIL_501 = "HTTP/1.1 501";
 
     private static final String CONTENT_LENGTH_HEADER_PREFIX =
             "Content-Length: ";
@@ -385,69 +384,53 @@ public abstract class SimpleHttpClient {
 
         useContinue = false;
 
-        resetResponse();
-    }
-
-    public void resetResponse() {
         responseLine = null;
         responseHeaders = new ArrayList<>();
         responseBody = null;
     }
 
-    public boolean responseLineStartsWith(String expected) {
-        String line = getResponseLine();
-        if (line == null) {
-            return false;
-        }
-        return line.startsWith(expected);
-    }
-
     public boolean isResponse100() {
-        return responseLineStartsWith(INFO_100);
+        return getResponseLine().startsWith(INFO_100);
     }
 
     public boolean isResponse200() {
-        return responseLineStartsWith(OK_200);
+        return getResponseLine().startsWith(OK_200);
     }
 
     public boolean isResponse302() {
-        return responseLineStartsWith(REDIRECT_302);
+        return getResponseLine().startsWith(REDIRECT_302);
     }
 
     public boolean isResponse303() {
-        return responseLineStartsWith(REDIRECT_303);
+        return getResponseLine().startsWith(REDIRECT_303);
     }
 
     public boolean isResponse400() {
-        return responseLineStartsWith(FAIL_400);
+        return getResponseLine().startsWith(FAIL_400);
     }
 
     public boolean isResponse404() {
-        return responseLineStartsWith(FAIL_404);
+        return getResponseLine().startsWith(FAIL_404);
     }
 
     public boolean isResponse408() {
-        return responseLineStartsWith(TIMEOUT_408);
+        return getResponseLine().startsWith(TIMEOUT_408);
     }
 
     public boolean isResponse413() {
-        return responseLineStartsWith(FAIL_413);
-    }
-
-    public boolean isResponse417() {
-        return responseLineStartsWith(FAIL_417);
+        return getResponseLine().startsWith(FAIL_413);
     }
 
     public boolean isResponse50x() {
-        return responseLineStartsWith(FAIL_50X);
+        return getResponseLine().startsWith(FAIL_50X);
     }
 
     public boolean isResponse500() {
-        return responseLineStartsWith(FAIL_500);
+        return getResponseLine().startsWith(FAIL_500);
     }
 
     public boolean isResponse501() {
-        return responseLineStartsWith(FAIL_501);
+        return getResponseLine().startsWith(FAIL_501);
     }
 
     public Socket getSocket() {

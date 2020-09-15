@@ -24,9 +24,8 @@ public abstract class EvaluationListener {
     /**
      * Fired before the evaluation of the expression.
      *
-     * @param context    The EL context in which the expression will be
-     *                   evaluated
-     * @param expression The expression that will be evaluated
+     * @param context
+     * @param expression
      */
     public void beforeEvaluation(ELContext context, String expression) {
         // NO-OP
@@ -35,8 +34,8 @@ public abstract class EvaluationListener {
     /**
      * Fired after the evaluation of the expression.
      *
-     * @param context    The EL context in which the expression was evaluated
-     * @param expression The expression that was evaluated
+     * @param context
+     * @param expression
      */
     public void afterEvaluation(ELContext context, String expression) {
         // NO-OP
@@ -45,9 +44,9 @@ public abstract class EvaluationListener {
     /**
      * Fired after a property has been resolved.
      *
-     * @param context  The EL context in which the property was resolved
-     * @param base     The base object on which the property was resolved
-     * @param property The property that was resolved
+     * @param context
+     * @param base
+     * @param property
      */
     public void propertyResolved(ELContext context, Object base, Object property) {
         // NO-OP

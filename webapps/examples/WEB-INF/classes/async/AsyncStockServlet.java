@@ -18,6 +18,7 @@ package async;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,9 +31,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
-
 import async.Stockticker.Stock;
 import async.Stockticker.TickListener;
 
@@ -40,15 +38,18 @@ public class AsyncStockServlet extends HttpServlet implements TickListener, Asyn
 
     private static final long serialVersionUID = 1L;
 
-    private static final Log log = LogFactory.getLog(AsyncStockServlet.class);
+    public static final String POLL = "POLL";
+    public static final String LONG_POLL = "LONG-POLL";
+    public static final String STREAM = "STREAM";
 
-    private static final ConcurrentLinkedQueue<AsyncContext> clients =
+    static final ArrayList<Stock> ticks = new ArrayList<>();
+    static final ConcurrentLinkedQueue<AsyncContext> clients =
             new ConcurrentLinkedQueue<>();
-    private static final AtomicInteger clientcount = new AtomicInteger(0);
-    private static final Stockticker ticker = new Stockticker();
+    static final AtomicInteger clientcount = new AtomicInteger(0);
+    static final Stockticker ticker = new Stockticker();
 
     public AsyncStockServlet() {
-        log.info("AsyncStockServlet created");
+        System.out.println("AsyncStockServlet created");
     }
 
 
@@ -74,14 +75,11 @@ public class AsyncStockServlet extends HttpServlet implements TickListener, Asyn
 
     @Override
     public void tick(Stock stock) {
+        ticks.add((Stock)stock.clone());
         Iterator<AsyncContext> it = clients.iterator();
         while (it.hasNext()) {
             AsyncContext actx = it.next();
-            try {
-                writeStock(actx, stock);
-            } catch (Exception e) {
-                // Ignore. The async error handling will deal with this.
-            }
+            writeStock(actx, stock);
         }
     }
 

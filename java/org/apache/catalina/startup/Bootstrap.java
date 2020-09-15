@@ -133,9 +133,9 @@ public final class Bootstrap {
     private Object catalinaDaemon = null;
 
 
-    ClassLoader commonLoader = null;
-    ClassLoader catalinaLoader = null;
-    ClassLoader sharedLoader = null;
+    protected ClassLoader commonLoader = null;
+    protected ClassLoader catalinaLoader = null;
+    protected ClassLoader sharedLoader = null;
 
 
     // -------------------------------------------------------- Private Methods
@@ -250,7 +250,6 @@ public final class Bootstrap {
 
     /**
      * Initialize daemon.
-     * @throws Exception Fatal initialization error
      */
     public void init() throws Exception {
 
@@ -331,8 +330,6 @@ public final class Bootstrap {
 
     /**
      * Load the Catalina daemon.
-     * @param arguments Initialization arguments
-     * @throws Exception Fatal initialization error
      */
     public void init(String[] arguments)
         throws Exception {
@@ -345,7 +342,6 @@ public final class Bootstrap {
 
     /**
      * Start the Catalina daemon.
-     * @throws Exception Fatal start error
      */
     public void start()
         throws Exception {
@@ -359,7 +355,6 @@ public final class Bootstrap {
 
     /**
      * Stop the Catalina Daemon.
-     * @throws Exception Fatal stop error
      */
     public void stop()
         throws Exception {
@@ -372,7 +367,6 @@ public final class Bootstrap {
 
     /**
      * Stop the standalone server.
-     * @throws Exception Fatal stop error
      */
     public void stopServer()
         throws Exception {
@@ -386,8 +380,6 @@ public final class Bootstrap {
 
    /**
      * Stop the standalone server.
-     * @param arguments Command line arguments
-     * @throws Exception Fatal stop error
      */
     public void stopServer(String[] arguments)
         throws Exception {
@@ -412,8 +404,6 @@ public final class Bootstrap {
 
     /**
      * Set flag.
-     * @param await <code>true</code> if the daemon should block
-     * @throws Exception Reflection error
      */
     public void setAwait(boolean await)
         throws Exception {
@@ -521,7 +511,6 @@ public final class Bootstrap {
     /**
      * Obtain the name of configured home (binary) directory. Note that home and
      * base may be the same (and are by default).
-     * @return the catalina home
      */
     public static String getCatalinaHome() {
         return catalinaHomeFile.getPath();
@@ -532,7 +521,6 @@ public final class Bootstrap {
      * Obtain the name of the configured base (instance) directory. Note that
      * home and base may be the same (and are by default). If this is not set
      * the value returned by {@link #getCatalinaHome()} will be used.
-     * @return the catalina base
      */
     public static String getCatalinaBase() {
         return catalinaBaseFile.getPath();
@@ -542,7 +530,6 @@ public final class Bootstrap {
     /**
      * Obtain the configured home (binary) directory. Note that home and
      * base may be the same (and are by default).
-     * @return the catalina home as a file
      */
     public static File getCatalinaHomeFile() {
         return catalinaHomeFile;
@@ -553,7 +540,6 @@ public final class Bootstrap {
      * Obtain the configured base (instance) directory. Note that
      * home and base may be the same (and are by default). If this is not set
      * the value returned by {@link #getCatalinaHomeFile()} will be used.
-     * @return the catalina base as a file
      */
     public static File getCatalinaBaseFile() {
         return catalinaBaseFile;
@@ -582,28 +568,14 @@ public final class Bootstrap {
             String path = value.substring(matcher.start(), matcher.end());
 
             path = path.trim();
-            if (path.length() == 0) {
-                continue;
-            }
 
-            char first = path.charAt(0);
-            char last = path.charAt(path.length() - 1);
-
-            if (first == '"' && last == '"' && path.length() > 1) {
+            if (path.startsWith("\"") && path.length() > 1) {
                 path = path.substring(1, path.length() - 1);
                 path = path.trim();
-                if (path.length() == 0) {
-                    continue;
-                }
-            } else if (path.contains("\"")) {
-                // Unbalanced quotes
-                // Too early to use standard i18n support. The class path hasn't
-                // been configured.
-                throw new IllegalArgumentException(
-                        "The double quote [\"] character only be used to quote paths. It must " +
-                        "not appear in a path. This loader path is not valid: [" + value + "]");
-            } else {
-                // Not quoted - NO-OP
+            }
+
+            if (path.length() == 0) {
+                continue;
             }
 
             result.add(path);

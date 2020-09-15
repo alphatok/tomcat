@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 public abstract class ELContext {
 
@@ -48,11 +47,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Mark the given property as resolved and notfy any interested listeners.
-     *
-     * @param base     The base object on which the property was found
-     * @param property The property that was resolved
-     *
      * @since EL 3.0
      */
     public void setPropertyResolved(Object base, Object property) {
@@ -66,18 +60,14 @@ public abstract class ELContext {
 
     // Can't use Class<?> because API needs to match specification
     /**
-     * Add an object to this EL context under the given key.
-     *
-     * @param key           The key under which to store the object
-     * @param contextObject The object to add
-     *
      * @throws NullPointerException
      *              If the supplied key or context is <code>null</code>
      */
     public void putContext(@SuppressWarnings("rawtypes") Class key,
             Object contextObject) {
-        Objects.requireNonNull(key);
-        Objects.requireNonNull(contextObject);
+        if (key == null || contextObject == null) {
+            throw new NullPointerException();
+        }
 
         if (this.map == null) {
             this.map = new HashMap<>();
@@ -88,17 +78,13 @@ public abstract class ELContext {
 
     // Can't use Class<?> because API needs to match specification
     /**
-     * Obtain the context object for the given key.
-     *
-     * @param key The key of the required context object
-     *
-     * @return The value of the context object associated with the given key
-     *
      * @throws NullPointerException
      *              If the supplied key is <code>null</code>
      */
     public Object getContext(@SuppressWarnings("rawtypes") Class key) {
-        Objects.requireNonNull(key);
+        if (key == null) {
+            throw new NullPointerException();
+        }
         if (this.map == null) {
             return null;
         }
@@ -108,11 +94,6 @@ public abstract class ELContext {
     public abstract ELResolver getELResolver();
 
     /**
-     * Obtain the ImportHandler for this ELContext, creating one if necessary.
-     * This method is not thread-safe.
-     *
-     * @return the ImportHandler for this ELContext.
-     *
      * @since EL 3.0
      */
     public ImportHandler getImportHandler() {
@@ -135,10 +116,6 @@ public abstract class ELContext {
     public abstract VariableMapper getVariableMapper();
 
     /**
-     * Register an EvaluationListener with this ELContext.
-     *
-     * @param listener The EvaluationListener to register
-     *
      * @since EL 3.0
      */
     public void addEvaluationListener(EvaluationListener listener) {
@@ -146,10 +123,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Obtain the list of registered EvaluationListeners.
-     *
-     * @return A list of the EvaluationListener registered with this ELContext
-     *
      * @since EL 3.0
      */
     public List<EvaluationListener> getEvaluationListeners() {
@@ -157,10 +130,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Notify interested listeners that an expression will be evaluated.
-     *
-     * @param expression The expression that will be evaluated
-     *
      * @since EL 3.0
      */
     public void notifyBeforeEvaluation(String expression) {
@@ -175,10 +144,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Notify interested listeners that an expression has been evaluated.
-     *
-     * @param expression The expression that was evaluated
-     *
      * @since EL 3.0
      */
     public void notifyAfterEvaluation(String expression) {
@@ -193,11 +158,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Notify interested listeners that a property has been resolved.
-     *
-     * @param base     The object on which the property was resolved
-     * @param property The property that was resolved
-     *
      * @since EL 3.0
      */
     public void notifyPropertyResolved(Object base, Object property) {
@@ -212,14 +172,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Determine if the specified name is recognised as the name of a lambda
-     * argument.
-     *
-     * @param name The name of the lambda argument
-     *
-     * @return <code>true</code> if the name is recognised as the name of a
-     *         lambda argument, otherwise <code>false</code>
-     *
      * @since EL 3.0
      */
     public boolean isLambdaArgument(String name) {
@@ -232,12 +184,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Obtain the value of the lambda argument with the given name.
-     *
-     * @param name The name of the lambda argument
-     *
-     * @return The value of the specified argument
-     *
      * @since EL 3.0
      */
     public Object getLambdaArgument(String name) {
@@ -251,11 +197,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Called when starting to evaluate a lambda expression so that the
-     * arguments are available to the EL context during evaluation.
-     *
-     * @param arguments The arguments in scope for the current lambda
-     *                  expression.
      * @since EL 3.0
      */
     public void enterLambdaScope(Map<String,Object> arguments) {
@@ -263,9 +204,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Called after evaluating a lambda expression to signal that the arguments
-     * are no longer required.
-     *
      * @since EL 3.0
      */
     public void exitLambdaScope() {
@@ -273,16 +211,6 @@ public abstract class ELContext {
     }
 
     /**
-     * Coerce the supplied object to the requested type.
-     *
-     * @param obj  The object to be coerced
-     * @param type The type to which the object should be coerced
-     *
-     * @return An instance of the requested type.
-     *
-     * @throws ELException
-     *              If the conversion fails
-     *
      * @since EL 3.0
      */
     public Object convertToType(Object obj, Class<?> type) {

@@ -14,32 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.apache.catalina.ant;
+
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.Authenticator;
 import java.net.HttpURLConnection;
-import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 
+
 /**
- * Abstract base class for Ant tasks that interact with the <em>Manager</em> web
- * application for dynamically deploying and undeploying applications. These
- * tasks require Ant 1.4 or later.
+ * Abstract base class for Ant tasks that interact with the
+ * <em>Manager</em> web application for dynamically deploying and
+ * undeploying applications.  These tasks require Ant 1.4 or later.
  *
  * @author Craig R. McClanahan
  * @since 4.1
  */
 public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
 
+
     // ----------------------------------------------------- Instance Variables
+
 
     /**
      * manager webapp's encoding.
@@ -49,13 +55,14 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
 
     // ------------------------------------------------------------- Properties
 
+
     /**
      * The charset used during URL encoding.
      */
     protected String charset = "ISO-8859-1";
 
     public String getCharset() {
-        return charset;
+        return (this.charset);
     }
 
     public void setCharset(String charset) {
@@ -69,7 +76,7 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
     protected String password = null;
 
     public String getPassword() {
-        return this.password;
+        return (this.password);
     }
 
     public void setPassword(String password) {
@@ -83,7 +90,7 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
     protected String url = "http://localhost:8080/manager/text";
 
     public String getUrl() {
-        return this.url;
+        return (this.url);
     }
 
     public void setUrl(String url) {
@@ -97,51 +104,36 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
     protected String username = null;
 
     public String getUsername() {
-        return this.username;
+        return (this.username);
     }
 
     public void setUsername(String username) {
         this.username = username;
     }
 
-    /**
-     * If set to true - ignore the constraint of the first line of the response
-     * message that must be "OK -".
-     * <p>
-     * When this attribute is set to {@code false} (the default), the first line
-     * of server response is expected to start with "OK -". If it does not then
-     * the task is considered as failed and the first line is treated as an
-     * error message.
-     * <p>
-     * When this attribute is set to {@code true}, the first line of the
-     * response is treated like any other, regardless of its text.
-     */
-    protected boolean ignoreResponseConstraint = false;
-
-    public boolean isIgnoreResponseConstraint() {
-        return ignoreResponseConstraint;
-    }
-
-    public void setIgnoreResponseConstraint(boolean ignoreResponseConstraint) {
-        this.ignoreResponseConstraint = ignoreResponseConstraint;
-    }
-
 
     // --------------------------------------------------------- Public Methods
 
+
     /**
-     * Execute the specified command. This logic only performs the common
-     * attribute validation required by all subclasses; it does not perform any
-     * functional logic directly.
+     * Execute the specified command.  This logic only performs the common
+     * attribute validation required by all subclasses; it does not perform
+     * any functional logic directly.
      *
      * @exception BuildException if a validation error occurs
      */
     @Override
     public void execute() throws BuildException {
+
         if ((username == null) || (password == null) || (url == null)) {
-            throw new BuildException("Must specify all of 'username', 'password', and 'url'");
+            throw new BuildException
+                ("Must specify all of 'username', 'password', and 'url'");
         }
+
     }
+
+
+    // ------------------------------------------------------ Protected Methods
 
 
     /**
@@ -152,14 +144,16 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
      * @exception BuildException if an error occurs
      */
     public void execute(String command) throws BuildException {
+
         execute(command, null, null, -1);
+
     }
 
 
     /**
-     * Execute the specified command, based on the configured properties. The
-     * input stream will be closed upon completion of this task, whether it was
-     * executed successfully or not.
+     * Execute the specified command, based on the configured properties.
+     * The input stream will be closed upon completion of this task, whether
+     * it was executed successfully or not.
      *
      * @param command Command to be executed
      * @param istream InputStream to include in an HTTP PUT, if any
@@ -168,8 +162,9 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
      *
      * @exception BuildException if an error occurs
      */
-    public void execute(String command, InputStream istream, String contentType, long contentLength)
-                    throws BuildException {
+    public void execute(String command, InputStream istream,
+                        String contentType, int contentLength)
+        throws BuildException {
 
         URLConnection conn = null;
         InputStreamReader reader = null;
@@ -190,7 +185,8 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
                     hconn.setRequestProperty("Content-Type", contentType);
                 }
                 if (contentLength >= 0) {
-                    hconn.setRequestProperty("Content-Length", "" + contentLength);
+                    hconn.setRequestProperty("Content-Length",
+                                             "" + contentLength);
 
                     hconn.setFixedLengthStreamingMode(contentLength);
                 }
@@ -198,33 +194,34 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
                 hconn.setDoOutput(false);
                 hconn.setRequestMethod("GET");
             }
-            hconn.setRequestProperty("User-Agent", "Catalina-Ant-Task/1.0");
+            hconn.setRequestProperty("User-Agent",
+                                     "Catalina-Ant-Task/1.0");
 
-            // Set up authorization with our credentials
-            Authenticator.setDefault(new TaskAuthenticator(username, password));
+            // Set up an authorization header with our credentials
+            String input = username + ":" + password;
+            String output = Base64.encodeBase64String(
+                    input.getBytes(StandardCharsets.ISO_8859_1));
+            hconn.setRequestProperty("Authorization",
+                                     "Basic " + output);
 
             // Establish the connection with the server
             hconn.connect();
 
             // Send the request data (if any)
             if (istream != null) {
-                try (BufferedOutputStream ostream = new BufferedOutputStream(
-                                hconn.getOutputStream(), 1024)) {
-                    byte buffer[] = new byte[1024];
-                    while (true) {
-                        int n = istream.read(buffer);
-                        if (n < 0) {
-                            break;
-                        }
-                        ostream.write(buffer, 0, n);
+                BufferedOutputStream ostream =
+                    new BufferedOutputStream(hconn.getOutputStream(), 1024);
+                byte buffer[] = new byte[1024];
+                while (true) {
+                    int n = istream.read(buffer);
+                    if (n < 0) {
+                        break;
                     }
-                    ostream.flush();
-                } finally {
-                    try {
-                        istream.close();
-                    } catch (Exception e) {
-                    }
+                    ostream.write(buffer, 0, n);
                 }
+                ostream.flush();
+                ostream.close();
+                istream.close();
             }
 
             // Process the response message
@@ -244,7 +241,7 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
                     if (buff.length() > 0) {
                         String line = buff.toString();
                         buff.setLength(0);
-                        if (!ignoreResponseConstraint && first) {
+                        if (first) {
                             if (!line.startsWith("OK -")) {
                                 error = line;
                                 msgPriority = Project.MSG_ERR;
@@ -288,23 +285,6 @@ public abstract class AbstractCatalinaTask extends BaseRedirectorHelperTask {
                     // Ignore
                 }
             }
-        }
-    }
-
-
-    private static class TaskAuthenticator extends Authenticator {
-
-        private final String user;
-        private final String password;
-
-        private TaskAuthenticator(String user, String password) {
-            this.user = user;
-            this.password = password;
-        }
-
-        @Override
-        protected PasswordAuthentication getPasswordAuthentication() {
-            return new PasswordAuthentication(user, password.toCharArray());
         }
     }
 }

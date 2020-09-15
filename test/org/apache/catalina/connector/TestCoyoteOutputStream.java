@@ -16,10 +16,7 @@
  */
 package org.apache.catalina.connector;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,100 +40,49 @@ import org.apache.tomcat.util.buf.ByteChunk;
 public class TestCoyoteOutputStream extends TomcatBaseTest {
 
     @Test
-    public void testNonBlockingWriteNoneBlockingWriteNoneContainerThread() throws Exception {
-        doNonBlockingTest(0, 0, true);
+    public void testNonBlockingWriteNoneBlockingWriteNone() throws Exception {
+        doNonBlockingTest(0, 0);
     }
 
     @Test
-    public void testNonBlockingWriteOnceBlockingWriteNoneContainerThread() throws Exception {
-        doNonBlockingTest(1, 0, true);
+    public void testNonBlockingWriteOnceBlockingWriteNone() throws Exception {
+        doNonBlockingTest(1, 0);
     }
 
     @Test
-    public void testNonBlockingWriteTwiceBlockingWriteNoneContainerThread() throws Exception {
-        doNonBlockingTest(2, 0, true);
+    public void testNonBlockingWriteTwiceBlockingWriteNone() throws Exception {
+        doNonBlockingTest(2, 0);
     }
 
     @Test
-    public void testNonBlockingWriteNoneBlockingWriteOnceContainerThread() throws Exception {
-        doNonBlockingTest(0, 1, true);
+    public void testNonBlockingWriteNoneBlockingWriteOnce() throws Exception {
+        doNonBlockingTest(0, 1);
     }
 
     @Test
-    public void testNonBlockingWriteOnceBlockingWriteOnceContainerThread() throws Exception {
-        doNonBlockingTest(1, 1, true);
+    public void testNonBlockingWriteOnceBlockingWriteOnce() throws Exception {
+        doNonBlockingTest(1, 1);
     }
 
     @Test
-    public void testNonBlockingWriteTwiceBlockingWriteOnceContainerThread() throws Exception {
-        doNonBlockingTest(2, 1, true);
+    public void testNonBlockingWriteTwiceBlockingWriteOnce() throws Exception {
+        doNonBlockingTest(2, 1);
     }
 
-    @Test
-    public void testNonBlockingWriteNoneBlockingWriteNoneNonContainerThread() throws Exception {
-        doNonBlockingTest(0, 0, false);
-    }
-
-    @Test
-    public void testNonBlockingWriteOnceBlockingWriteNoneNonContainerThread() throws Exception {
-        doNonBlockingTest(1, 0, false);
-    }
-
-    @Test
-    public void testNonBlockingWriteTwiceBlockingWriteNoneNonContainerThread() throws Exception {
-        doNonBlockingTest(2, 0, false);
-    }
-
-    @Test
-    public void testNonBlockingWriteNoneBlockingWriteOnceNonContainerThread() throws Exception {
-        doNonBlockingTest(0, 1, false);
-    }
-
-    @Test
-    public void testNonBlockingWriteOnceBlockingWriteOnceNonContainerThread() throws Exception {
-        doNonBlockingTest(1, 1, false);
-    }
-
-    @Test
-    public void testNonBlockingWriteTwiceBlockingWriteOnceNonContainerThread() throws Exception {
-        doNonBlockingTest(2, 1, false);
-    }
-
-    @Test
-    public void testWriteWithByteBuffer() throws Exception {
-        Tomcat tomcat = getTomcatInstance();
-
-        Context root = tomcat.addContext("", TEMP_DIR);
-        Tomcat.addServlet(root, "testServlet", new TestServlet());
-        root.addServletMappingDecoded("/", "testServlet");
-
-        tomcat.start();
-
-        ByteChunk bc = new ByteChunk();
-        int rc = getUrl("http://localhost:" + getPort() + "/", bc, null, null);
-        Assert.assertEquals(HttpServletResponse.SC_OK, rc);
-        File file = new File("test/org/apache/catalina/connector/test_content.txt");
-        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
-            ByteChunk expected = new ByteChunk();
-            expected.append(raf.getChannel().map(MapMode.READ_ONLY, 0, file.length()));
-            Assert.assertTrue(expected.equals(bc));
-        }
-    }
-
-    private void doNonBlockingTest(int asyncWriteTarget, int syncWriteTarget,
-            boolean useContainerThreadToSetListener) throws Exception {
+    private void doNonBlockingTest(int asyncWriteTarget, int syncWriteTarget)
+            throws Exception {
 
         Tomcat tomcat = getTomcatInstance();
 
         Context root = tomcat.addContext("", TEMP_DIR);
         Wrapper w = Tomcat.addServlet(root, "nbWrite",
-                new NonBlockingWriteServlet(asyncWriteTarget, useContainerThreadToSetListener));
+                new NonBlockingWriteServlet(asyncWriteTarget));
         w.setAsyncSupported(true);
-        root.addServletMappingDecoded("/nbWrite", "nbWrite");
+        root.addServletMapping("/nbWrite", "nbWrite");
         Tomcat.addServlet(root, "write",
                 new BlockingWriteServlet(asyncWriteTarget, syncWriteTarget));
         w.setAsyncSupported(true);
-        root.addServletMappingDecoded("/write", "write");
+        root.addServletMapping("/write", "write");
 
         tomcat.start();
 
@@ -164,12 +110,9 @@ public class TestCoyoteOutputStream extends TomcatBaseTest {
 
         private final int asyncWriteTarget;
         private final AtomicInteger asyncWriteCount = new AtomicInteger(0);
-        private final boolean useContainerThreadToSetListener;
 
-        public NonBlockingWriteServlet(int asyncWriteTarget,
-                boolean useContainerThreadToSetListener) {
+        public NonBlockingWriteServlet(int asyncWriteTarget) {
             this.asyncWriteTarget = asyncWriteTarget;
-            this.useContainerThreadToSetListener = useContainerThreadToSetListener;
         }
 
         @Override
@@ -182,14 +125,9 @@ public class TestCoyoteOutputStream extends TomcatBaseTest {
 
 
             AsyncContext asyncCtxt = req.startAsync();
-            asyncCtxt.setTimeout(5);
-            Runnable task = new AsyncTask(asyncCtxt, sos);
-            if (useContainerThreadToSetListener) {
-                asyncCtxt.start(task);
-            } else {
-                Thread t = new Thread(task);
-                t.start();
-            }
+            // Infinite timeout for debugging
+            asyncCtxt.setTimeout(0);
+            asyncCtxt.start(new AsyncTask(asyncCtxt, sos));
         }
 
         private void doAsyncWrite(AsyncContext asyncCtxt,
@@ -242,8 +180,7 @@ public class TestCoyoteOutputStream extends TomcatBaseTest {
 
             @Override
             public void onError(Throwable throwable) {
-                // Not expected.
-                throwable.printStackTrace();
+                // TODO Auto-generated method stub
             }
         }
     }
@@ -273,21 +210,5 @@ public class TestCoyoteOutputStream extends TomcatBaseTest {
                         StandardCharsets.UTF_8));
             }
         }
-    }
-
-    private static final class TestServlet extends HttpServlet {
-
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-                throws ServletException, IOException {
-            CoyoteOutputStream os = (CoyoteOutputStream) resp.getOutputStream();
-            File file = new File("test/org/apache/catalina/connector/test_content.txt");
-            try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
-                os.write(raf.getChannel().map(MapMode.READ_ONLY, 0, file.length()));
-            }
-        }
-
     }
 }

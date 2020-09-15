@@ -17,6 +17,7 @@
 package org.apache.jasper.compiler;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
@@ -228,11 +229,7 @@ abstract class Node implements TagConstants {
 
     /**
      * Get the attribute that is non request time expression, either from the
-     * attribute of the node, or from a jsp:attribute
-     *
-     * @param name The name of the attribute
-     *
-     * @return The attribute value
+     * attribute of the node, or from a jsp:attrbute
      */
     public String getTextAttribute(String name) {
 
@@ -250,15 +247,12 @@ abstract class Node implements TagConstants {
     }
 
     /**
-     * Searches all sub-nodes of this node for jsp:attribute standard actions
-     * with the given name.
+     * Searches all subnodes of this node for jsp:attribute standard actions
+     * with the given name, and returns the NamedAttribute node of the matching
+     * named attribute, nor null if no such node is found.
      * <p>
      * This should always be called and only be called for nodes that accept
      * dynamic runtime attribute expressions.
-     *
-     * @param name The name of the attribute
-     * @return the NamedAttribute node of the matching named attribute, nor null
-     *         if no such node is found.
      */
     public NamedAttribute getNamedAttributeNode(String name) {
         NamedAttribute result = null;
@@ -524,8 +518,6 @@ abstract class Node implements TagConstants {
 
         /**
          * Generates a new temporary variable name.
-         *
-         * @return The name to use for the temporary variable
          */
         public String nextTemporaryVariableName() {
             if (parentRoot == null) {
@@ -591,34 +583,19 @@ abstract class Node implements TagConstants {
             int start = 0;
             int index;
             while ((index = value.indexOf(',', start)) != -1) {
-                imports.add(validateImport(value.substring(start, index)));
+                imports.add(value.substring(start, index).trim());
                 start = index + 1;
             }
             if (start == 0) {
                 // No comma found
-                imports.add(validateImport(value));
+                imports.add(value.trim());
             } else {
-                imports.add(validateImport(value.substring(start)));
+                imports.add(value.substring(start).trim());
             }
         }
 
         public List<String> getImports() {
             return imports;
-        }
-
-        /**
-         * Just need enough validation to make sure nothing strange is going on.
-         * The compiler will validate this thoroughly when it tries to compile
-         * the resulting .java file.
-         */
-        private String validateImport(String importEntry) {
-            // This should either be a fully-qualified class name or a package
-            // name with a wildcard
-            if (importEntry.indexOf(';') > -1) {
-                throw new IllegalArgumentException(
-                        Localizer.getMessage("jsp.error.page.invalid.import"));
-            }
-            return importEntry.trim();
         }
     }
 
@@ -1709,10 +1686,6 @@ abstract class Node implements TagConstants {
         /**
          * Checks to see if the attribute of the given name is of type
          * JspFragment.
-         *
-         * @param name The attribute to check
-         *
-         * @return {@code true} if it is a JspFragment
          */
         public boolean checkIfAttributeIsJspFragment(String name) {
             boolean result = false;
@@ -1787,12 +1760,12 @@ abstract class Node implements TagConstants {
         }
 
         /**
+         * Returns true if this custom action has an empty body, and false
+         * otherwise.
+         *
          * A custom action is considered to have an empty body if the following
          * holds true: - getBody() returns null, or - all immediate children are
          * jsp:attribute actions, or - the action's jsp:body is empty.
-         *
-         * @return {@code true} if this custom action has an empty body, and
-         *         {@code false} otherwise.
          */
         public boolean hasEmptyBody() {
             boolean hasEmptyBody = true;
@@ -2066,7 +2039,7 @@ abstract class Node implements TagConstants {
         }
 
         /**
-         * @return true if this template text contains whitespace only.
+         * Returns true if this template text contains whitespace only.
          */
         public boolean isAllSpace() {
             boolean isAllSpace = true;
@@ -2091,7 +2064,7 @@ abstract class Node implements TagConstants {
             if (extraSmap == null) {
                 extraSmap = new ArrayList<>();
             }
-            extraSmap.add(Integer.valueOf(srcLine));
+            extraSmap.add(new Integer(srcLine));
         }
 
         public ArrayList<Integer> getExtraSmap() {
@@ -2151,12 +2124,11 @@ abstract class Node implements TagConstants {
         }
 
         /**
-         * Allow node to validate itself.
+         * Allow node to validate itself
          *
-         * @param ef The expression factory to use to evaluate any EL
-         * @param ctx The context to use to evaluate any EL
-         *
-         * @throws ELException If validation fails
+         * @param ef
+         * @param ctx
+         * @throws ELException
          */
         public void validateEL(ExpressionFactory ef, ELContext ctx)
                 throws ELException {
@@ -2320,9 +2292,7 @@ abstract class Node implements TagConstants {
         }
 
         /**
-         * @return {@code true} if the attribute is a "dynamic" attribute of a
-         * custom tag that implements DynamicAttributes interface. That is,
-         * a random extra attribute that is not declared by the tag.
+         * XXX
          */
         public boolean isDynamic() {
             return dynamic;
@@ -2381,11 +2351,11 @@ abstract class Node implements TagConstants {
          *
          * @param v
          *            The visitor used
-         *
-         * @throws JasperException if an error occurs while visiting a node
          */
         public void visit(Visitor v) throws JasperException {
-            for (Node n : list) {
+            Iterator<Node> iter = list.iterator();
+            while (iter.hasNext()) {
+                Node n = iter.next();
                 n.accept(v);
             }
         }

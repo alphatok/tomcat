@@ -68,32 +68,44 @@ public final class SessionEvent extends EventObject {
 
 
     /**
-     * @return the event data of this event.
+     * Return the event data of this event.
      */
     public Object getData() {
-        return this.data;
+
+        return (this.data);
+
     }
 
 
     /**
-     * @return the Session on which this event occurred.
+     * Return the Session on which this event occurred.
      */
     public Session getSession() {
-        return this.session;
+
+        return (this.session);
+
     }
 
 
     /**
-     * @return the event type of this event.
+     * Return the event type of this event.
      */
     public String getType() {
-        return this.type;
+
+        return (this.type);
+
     }
 
 
+    /**
+     * Return a string representation of this event.
+     */
     @Override
     public String toString() {
-        return "SessionEvent['" + getSession() + "','" + getType() + "']";
+
+        return ("SessionEvent['" + getSession() + "','" +
+                getType() + "']");
+
     }
 
 

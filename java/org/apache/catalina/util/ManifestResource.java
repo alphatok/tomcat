@@ -17,6 +17,7 @@
 package org.apache.catalina.util;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -106,7 +107,9 @@ public class ManifestResource {
         if (requiredExtensions == null) {
             return true;
         }
-        for (Extension ext : requiredExtensions) {
+        Iterator<Extension> it = requiredExtensions.iterator();
+        while (it.hasNext()) {
+            Extension ext = it.next();
             if (!ext.isFulfilled()) return false;
         }
         return true;
@@ -114,6 +117,7 @@ public class ManifestResource {
 
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("ManifestResource[");
         sb.append(resourceName);
 
@@ -129,7 +133,7 @@ public class ManifestResource {
             case APPLICATION : sb.append(", resourceType=APPLICATION"); break;
         }
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
     }
 
 

@@ -22,8 +22,6 @@ public abstract class Endpoint {
      * Event that is triggered when a new session starts.
      *
      * @param session   The new session.
-     * @param config    The configuration with which the Endpoint was
-     *                  configured.
      */
     public abstract void onOpen(Session session, EndpointConfig config);
 
@@ -40,8 +38,8 @@ public abstract class Endpoint {
     /**
      * Event that is triggered when a protocol error occurs.
      *
-     * @param session   The session.
-     * @param throwable The exception.
+     * @param session   The session
+     * @param throwable The exception
      */
     public void onError(Session session, Throwable throwable) {
         // NO-OP by default

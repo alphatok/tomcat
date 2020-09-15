@@ -31,6 +31,7 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -73,13 +74,15 @@ class Util {
             }
             return template;
         } catch (MissingResourceException e) {
-            return "Missing Resource: '" + name + "' for Locale " + locale.getDisplayName();
+            return "Missing Resource: '" + name + "' for Locale "
+                    + locale.getDisplayName();
         }
     }
 
 
     private static final CacheValue nullTcclFactory = new CacheValue();
-    private static final Map<CacheKey, CacheValue> factoryCache = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<CacheKey, CacheValue> factoryCache =
+            new ConcurrentHashMap<>();
 
     /**
      * Provides a per class loader cache of ExpressionFactory instances without
@@ -115,8 +118,8 @@ class Util {
 
         if (factory == null) {
             final Lock writeLock = cacheValue.getLock().writeLock();
-            writeLock.lock();
             try {
+                writeLock.lock();
                 factory = cacheValue.getExpressionFactory();
                 if (factory == null) {
                     factory = ExpressionFactory.newInstance();
@@ -225,7 +228,7 @@ class Util {
     private static Wrapper findWrapper(Class<?> clazz, List<Wrapper> wrappers,
             String name, Class<?>[] paramTypes, Object[] paramValues) {
 
-        Map<Wrapper,MatchResult> candidates = new HashMap<>();
+        Map<Wrapper,Integer> candidates = new HashMap<>();
 
         int paramCount;
         if (paramTypes == null) {
@@ -252,8 +255,6 @@ class Util {
 
             // Check the parameters match
             int exactMatch = 0;
-            int assignableMatch = 0;
-            int coercibleMatch = 0;
             boolean noMatch = false;
             for (int i = 0; i < mParamCount; i++) {
                 // Can't be null
@@ -262,16 +263,12 @@ class Util {
                 } else if (i == (mParamCount - 1) && w.isVarArgs()) {
                     Class<?> varType = mParamTypes[i].getComponentType();
                     for (int j = i; j < paramCount; j++) {
-                        if (isAssignableFrom(paramTypes[j], varType)) {
-                            assignableMatch++;
-                        } else {
+                        if (!isAssignableFrom(paramTypes[j], varType)) {
                             if (paramValues == null) {
                                 noMatch = true;
                                 break;
                             } else {
-                                if (isCoercibleFrom(paramValues[j], varType)) {
-                                    coercibleMatch++;
-                                } else {
+                                if (!isCoercibleFrom(paramValues[j], varType)) {
                                     noMatch = true;
                                     break;
                                 }
@@ -281,16 +278,12 @@ class Util {
                         // lead to a varArgs method matching when the result
                         // should be ambiguous
                     }
-                } else if (isAssignableFrom(paramTypes[i], mParamTypes[i])) {
-                    assignableMatch++;
-                } else {
+                } else if (!isAssignableFrom(paramTypes[i], mParamTypes[i])) {
                     if (paramValues == null) {
                         noMatch = true;
                         break;
                     } else {
-                        if (isCoercibleFrom(paramValues[i], mParamTypes[i])) {
-                            coercibleMatch++;
-                        } else {
+                        if (!isCoercibleFrom(paramValues[i], mParamTypes[i])) {
                             noMatch = true;
                             break;
                         }
@@ -307,27 +300,26 @@ class Util {
                 return w;
             }
 
-            candidates.put(w, new MatchResult(
-                    exactMatch, assignableMatch, coercibleMatch, w.isBridge()));
+            candidates.put(w, Integer.valueOf(exactMatch));
         }
 
         // Look for the method that has the highest number of parameters where
         // the type matches exactly
-        MatchResult bestMatch = new MatchResult(0, 0, 0, false);
+        int bestMatch = 0;
         Wrapper match = null;
         boolean multiple = false;
-        for (Map.Entry<Wrapper, MatchResult> entry : candidates.entrySet()) {
-            int cmp = entry.getValue().compareTo(bestMatch);
-            if (cmp > 0 || match == null) {
-                bestMatch = entry.getValue();
+        for (Map.Entry<Wrapper, Integer> entry : candidates.entrySet()) {
+            if (entry.getValue().intValue() > bestMatch ||
+                    match == null) {
+                bestMatch = entry.getValue().intValue();
                 match = entry.getKey();
                 multiple = false;
-            } else if (cmp == 0) {
+            } else if (entry.getValue().intValue() == bestMatch) {
                 multiple = true;
             }
         }
         if (multiple) {
-            if (bestMatch.getExact() == paramCount - 1) {
+            if (bestMatch == paramCount - 1) {
                 // Only one parameter is not an exact match - try using the
                 // super class
                 match = resolveAmbiguousWrapper(candidates.keySet(), paramTypes);
@@ -660,7 +652,6 @@ class Util {
         public abstract Object unWrap();
         public abstract Class<?>[] getParameterTypes();
         public abstract boolean isVarArgs();
-        public abstract boolean isBridge();
     }
 
 
@@ -685,11 +676,6 @@ class Util {
         public boolean isVarArgs() {
             return m.isVarArgs();
         }
-
-        @Override
-        public boolean isBridge() {
-            return m.isBridge();
-        }
     }
 
     private static class ConstructorWrapper extends Wrapper {
@@ -712,89 +698,6 @@ class Util {
         @Override
         public boolean isVarArgs() {
             return c.isVarArgs();
-        }
-
-        @Override
-        public boolean isBridge() {
-            return false;
-        }
-    }
-
-    /*
-     * This class duplicates code in org.apache.el.util.ReflectionUtil. When
-     * making changes keep the code in sync.
-     */
-    private static class MatchResult implements Comparable<MatchResult> {
-
-        private final int exact;
-        private final int assignable;
-        private final int coercible;
-        private final boolean bridge;
-
-        public MatchResult(int exact, int assignable, int coercible, boolean bridge) {
-            this.exact = exact;
-            this.assignable = assignable;
-            this.coercible = coercible;
-            this.bridge = bridge;
-        }
-
-        public int getExact() {
-            return exact;
-        }
-
-        public int getAssignable() {
-            return assignable;
-        }
-
-        public int getCoercible() {
-            return coercible;
-        }
-
-        public boolean isBridge() {
-            return bridge;
-        }
-
-        @Override
-        public int compareTo(MatchResult o) {
-            int cmp = Integer.compare(this.getExact(), o.getExact());
-            if (cmp == 0) {
-                cmp = Integer.compare(this.getAssignable(), o.getAssignable());
-                if (cmp == 0) {
-                    cmp = Integer.compare(this.getCoercible(), o.getCoercible());
-                    if (cmp == 0) {
-                        // The nature of bridge methods is such that it actually
-                        // doesn't matter which one we pick as long as we pick
-                        // one. That said, pick the 'right' one (the non-bridge
-                        // one) anyway.
-                        cmp = Boolean.compare(o.isBridge(), this.isBridge());
-                    }
-                }
-            }
-            return cmp;
-        }
-
-        @Override
-        public boolean equals(Object o)
-        {
-            return o == this
-                    || (null != o
-                    && this.getClass().equals(o.getClass())
-                    && ((MatchResult)o).getExact() == this.getExact()
-                    && ((MatchResult)o).getAssignable() == this.getAssignable()
-                    && ((MatchResult)o).getCoercible() == this.getCoercible()
-                    && ((MatchResult)o).isBridge() == this.isBridge()
-                    )
-                    ;
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return (this.isBridge() ? 1 << 24 : 0)
-                    ^ this.getExact() << 16
-                    ^ this.getAssignable() << 8
-                    ^ this.getCoercible()
-                    ;
         }
     }
 }

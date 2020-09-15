@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.apache.catalina.realm;
 
-import java.io.Serializable;
+
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
@@ -26,15 +28,14 @@ import javax.security.auth.login.LoginContext;
 import org.apache.catalina.TomcatPrincipal;
 import org.ietf.jgss.GSSCredential;
 
+
 /**
  * Generic implementation of <strong>java.security.Principal</strong> that
  * is available for use by <code>Realm</code> implementations.
  *
  * @author Craig R. McClanahan
  */
-public class GenericPrincipal implements TomcatPrincipal, Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class GenericPrincipal implements TomcatPrincipal {
 
 
     // ----------------------------------------------------------- Constructors
@@ -98,7 +99,7 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
      *        getUserPrincipal call if not null; if null, this will be returned
      * @param loginContext  - If provided, this will be used to log out the user
      *        at the appropriate time
-     * @param gssCredential - If provided, the user's delegated credentials
+     * @param gssCredential - If provided, the user&apos;s delegated credentials
      */
     public GenericPrincipal(String name, String password, List<String> roles,
             Principal userPrincipal, LoginContext loginContext,
@@ -111,16 +112,16 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
             this.roles = new String[0];
         } else {
             this.roles = roles.toArray(new String[roles.size()]);
-            if (this.roles.length > 1) {
+            if (this.roles.length > 1)
                 Arrays.sort(this.roles);
-            }
         }
         this.loginContext = loginContext;
         this.gssCredential = gssCredential;
     }
 
 
-    // -------------------------------------------------------------- Properties
+    // ------------------------------------------------------------- Properties
+
 
     /**
      * The username of the user represented by this Principal.
@@ -129,7 +130,7 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
 
     @Override
     public String getName() {
-        return this.name;
+        return (this.name);
     }
 
 
@@ -140,7 +141,7 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
     protected final String password;
 
     public String getPassword() {
-        return this.password;
+        return (this.password);
     }
 
 
@@ -150,7 +151,7 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
     protected final String roles[];
 
     public String[] getRoles() {
-        return this.roles;
+        return (this.roles);
     }
 
 
@@ -173,13 +174,13 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
      * The JAAS LoginContext, if any, used to authenticate this Principal.
      * Kept so we can call logout().
      */
-    protected final transient LoginContext loginContext;
+    protected final LoginContext loginContext;
 
 
     /**
-     * The user's delegated credentials.
+     * The user&apos;s delegated credentials.
      */
-    protected transient GSSCredential gssCredential = null;
+    protected GSSCredential gssCredential = null;
 
     @Override
     public GSSCredential getGssCredential() {
@@ -189,25 +190,22 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
         this.gssCredential = gssCredential;
     }
 
+    // --------------------------------------------------------- Public Methods
 
-    // ---------------------------------------------------------- Public Methods
 
     /**
      * Does the user represented by this Principal possess the specified role?
      *
      * @param role Role to be tested
-     *
-     * @return <code>true</code> if this Principal has been assigned the given
-     *         role, otherwise <code>false</code>
      */
     public boolean hasRole(String role) {
-        if ("*".equals(role)) {// Special 2.4 role meaning everyone
+
+        if("*".equals(role)) // Special 2.4 role meaning everyone
             return true;
-        }
-        if (role == null) {
-            return false;
-        }
-        return Arrays.binarySearch(roles, role) >= 0;
+        if (role == null)
+            return (false);
+        return (Arrays.binarySearch(roles, role) >= 0);
+
     }
 
 
@@ -217,56 +215,36 @@ public class GenericPrincipal implements TomcatPrincipal, Serializable {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("GenericPrincipal[");
         sb.append(this.name);
         sb.append("(");
-        for (int i = 0; i < roles.length; i++ ) {
+        for( int i=0;i<roles.length; i++ ) {
             sb.append( roles[i]).append(",");
         }
         sb.append(")]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 
 
+    /**
+     * Calls logout, if necessary, on any associated JAASLoginContext. May in
+     * the future be extended to cover other logout requirements.
+     *
+     * @throws Exception If something goes wrong with the logout. Uses Exception
+     *                   to allow for future expansion of this method to cover
+     *                   other logout mechanisms that might throw a different
+     *                   exception to LoginContext
+     *
+     */
     @Override
     public void logout() throws Exception {
         if (loginContext != null) {
             loginContext.logout();
         }
-        if (gssCredential != null) {
-            gssCredential.dispose();
-        }
     }
 
 
-    // ----------------------------------------------------------- Serialization
 
-    private Object writeReplace() {
-        return new SerializablePrincipal(name, password, roles, userPrincipal);
-    }
-
-    private static class SerializablePrincipal implements Serializable {
-        private static final long serialVersionUID = 1L;
-
-        private final String name;
-        private final String password;
-        private final String[] roles;
-        private final Principal principal;
-
-        public SerializablePrincipal(String name, String password, String[] roles,
-                Principal principal) {
-            this.name = name;
-            this.password = password;
-            this.roles = roles;
-            if (principal instanceof Serializable) {
-                this.principal = principal;
-            } else {
-                this.principal = null;
-            }
-        }
-
-        private Object readResolve() {
-            return new GenericPrincipal(name, password, Arrays.asList(roles), principal);
-        }
-    }
 }

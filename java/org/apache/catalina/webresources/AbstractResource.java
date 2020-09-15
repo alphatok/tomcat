@@ -27,7 +27,8 @@ import org.apache.tomcat.util.res.StringManager;
 
 public abstract class AbstractResource implements WebResource {
 
-    protected static final StringManager sm = StringManager.getManager(AbstractResource.class);
+    protected static final StringManager sm =
+            StringManager.getManager(Constants.Package);
 
     private final WebResourceRoot root;
     private final String webAppPath;

@@ -40,9 +40,9 @@ public class JspFactoryImpl extends JspFactory {
 
     private static final String SPEC_VERSION = "2.3";
     private static final boolean USE_POOL =
-        Boolean.parseBoolean(System.getProperty("org.apache.jasper.runtime.JspFactoryImpl.USE_POOL", "true"));
+        Boolean.valueOf(System.getProperty("org.apache.jasper.runtime.JspFactoryImpl.USE_POOL", "true")).booleanValue();
     private static final int POOL_SIZE =
-        Integer.parseInt(System.getProperty("org.apache.jasper.runtime.JspFactoryImpl.POOL_SIZE", "8"));
+        Integer.valueOf(System.getProperty("org.apache.jasper.runtime.JspFactoryImpl.POOL_SIZE", "8")).intValue();
 
     private final ThreadLocal<PageContextPool> localPool = new ThreadLocal<>();
 

@@ -23,16 +23,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
-
 public class TesterLeakingServlet1 extends HttpServlet {
-
-    private static final Log log = LogFactory.getLog(TesterLeakingServlet1.class);
 
     private static final long serialVersionUID = 1L;
 
-    private static ThreadLocal<TesterCounter> myThreadLocal = new ThreadLocal<>();
+    private ThreadLocal<TesterCounter> myThreadLocal = new ThreadLocal<>();
 
     @Override
     protected void doGet(HttpServletRequest request,
@@ -41,7 +36,6 @@ public class TesterLeakingServlet1 extends HttpServlet {
 
         TesterCounter counter = myThreadLocal.get();
         if (counter == null) {
-            log.info("Adding thread local to thread " + Thread.currentThread().getName());
             counter = new TesterCounter();
             myThreadLocal.set(counter);
         }
@@ -50,5 +44,12 @@ public class TesterLeakingServlet1 extends HttpServlet {
         response.getWriter().println(
                 "The current thread served this servlet "
                         + counter.getCount() + " times");
+    }
+
+    @Override
+    public void destroy() {
+        super.destroy();
+        // normally not needed, just to make my point
+        myThreadLocal = null;
     }
 }

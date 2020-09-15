@@ -32,19 +32,17 @@ import org.junit.Test;
 import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.connector.Request;
+import org.apache.catalina.core.TesterContext;
 import org.apache.catalina.startup.TesterMapRealm;
 import org.apache.catalina.startup.TesterServlet;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
-import org.apache.tomcat.unittest.TesterContext;
-import org.apache.tomcat.unittest.TesterRequest;
-import org.apache.tomcat.unittest.TesterServletContext;
+import org.apache.catalina.util.ConcurrentMessageDigest;
+import org.apache.catalina.util.MD5Encoder;
 import org.apache.tomcat.util.buf.ByteChunk;
 import org.apache.tomcat.util.descriptor.web.LoginConfig;
 import org.apache.tomcat.util.descriptor.web.SecurityCollection;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
-import org.apache.tomcat.util.security.ConcurrentMessageDigest;
-import org.apache.tomcat.util.security.MD5Encoder;
 
 public class TestDigestAuthenticator extends TomcatBaseTest {
 
@@ -65,9 +63,7 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
     @Test
     public void bug54521() throws LifecycleException {
         DigestAuthenticator digestAuthenticator = new DigestAuthenticator();
-        TesterContext context = new TesterContext();
-        context.setServletContext(new TesterServletContext());
-        digestAuthenticator.setContainer(context);
+        digestAuthenticator.setContainer(new TesterContext());
         digestAuthenticator.start();
         Request request = new TesterRequest();
         final int count = 1000;
@@ -249,6 +245,7 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
         // Third request should succeed if we increment nc
         auth.clear();
         bc.recycle();
+        bc.reset();
         auth.add(buildDigestResponse(user, pwd, digestUri, realm,
                 getNonce(respHeaders), getOpaque(respHeaders), nc2, cnonce,
                 qop));
@@ -271,14 +268,15 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
         // Configure a context with digest auth and a single protected resource
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctxt = tomcat.addContext(CONTEXT_PATH, null);
+        // Must have a real docBase - just use temp
+        Context ctxt = tomcat.addContext(CONTEXT_PATH,
+                System.getProperty("java.io.tmpdir"));
 
         // Add protected servlet
         Tomcat.addServlet(ctxt, "TesterServlet", new TesterServlet());
-        ctxt.addServletMappingDecoded(URI, "TesterServlet");
+        ctxt.addServletMapping(URI, "TesterServlet");
         SecurityCollection collection = new SecurityCollection();
-        collection.addPatternDecoded(URI);
+        collection.addPattern(URI);
         SecurityConstraint sc = new SecurityConstraint();
         sc.addAuthRole(ROLE);
         sc.addCollection(collection);
@@ -305,7 +303,7 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
         String authHeader = authHeaders.iterator().next();
 
         int start = authHeader.indexOf("nonce=\"") + 7;
-        int end = authHeader.indexOf('\"', start);
+        int end = authHeader.indexOf("\"", start);
         return authHeader.substring(start, end);
     }
 
@@ -316,7 +314,7 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
         String authHeader = authHeaders.iterator().next();
 
         int start = authHeader.indexOf("opaque=\"") + 8;
-        int end = authHeader.indexOf('\"', start);
+        int end = authHeader.indexOf("\"", start);
         return authHeader.substring(start, end);
     }
 
@@ -388,5 +386,14 @@ public class TestDigestAuthenticator extends TomcatBaseTest {
     private static String digest(String input) {
         return MD5Encoder.encode(
                 ConcurrentMessageDigest.digestMD5(input.getBytes()));
+    }
+
+
+    private static class TesterRequest extends Request {
+
+        @Override
+        public String getRemoteAddr() {
+            return "127.0.0.1";
+        }
     }
 }

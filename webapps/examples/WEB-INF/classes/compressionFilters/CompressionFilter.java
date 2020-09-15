@@ -23,8 +23,9 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import javax.servlet.Filter;
 import javax.servlet.FilterChain;
-import javax.servlet.GenericFilter;
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -38,9 +39,13 @@ import javax.servlet.http.HttpServletResponse;
  * @author Amy Roh
  * @author Dmitri Valdin
  */
-public class CompressionFilter extends GenericFilter {
+public class CompressionFilter implements Filter {
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * The filter configuration object we are associated with.  If this value
+     * is null, this filter instance is not currently configured.
+     */
+    private FilterConfig config = null;
 
     /**
      * Minimal reasonable threshold.
@@ -72,61 +77,81 @@ public class CompressionFilter extends GenericFilter {
      */
     private int debug = 0;
 
+    /**
+     * Place this filter into service.
+     *
+     * @param filterConfig The filter configuration object
+     */
     @Override
-    public void init() {
-        String str = getInitParameter("debug");
-        if (str != null) {
-            debug = Integer.parseInt(str);
-        }
+    public void init(FilterConfig filterConfig) {
 
-        str = getInitParameter("compressionThreshold");
-        if (str != null) {
-            compressionThreshold = Integer.parseInt(str);
-            if (compressionThreshold != 0 && compressionThreshold < minThreshold) {
+        config = filterConfig;
+        if (filterConfig != null) {
+            String value = filterConfig.getInitParameter("debug");
+            if (value!=null) {
+                debug = Integer.parseInt(value);
+            }
+
+            String str = filterConfig.getInitParameter("compressionThreshold");
+            if (str!=null) {
+                compressionThreshold = Integer.parseInt(str);
+                if (compressionThreshold != 0 && compressionThreshold < minThreshold) {
+                    if (debug > 0) {
+                        System.out.println("compressionThreshold should be either 0 - no compression or >= " + minThreshold);
+                        System.out.println("compressionThreshold set to " + minThreshold);
+                    }
+                    compressionThreshold = minThreshold;
+                }
+            }
+
+            str = filterConfig.getInitParameter("compressionBuffer");
+            if (str!=null) {
+                compressionBuffer = Integer.parseInt(str);
+                if (compressionBuffer < minBuffer) {
+                    if (debug > 0) {
+                        System.out.println("compressionBuffer should be >= " + minBuffer);
+                        System.out.println("compressionBuffer set to " + minBuffer);
+                    }
+                    compressionBuffer = minBuffer;
+                }
+            }
+
+            str = filterConfig.getInitParameter("compressionMimeTypes");
+            if (str!=null) {
+                List<String> values = new ArrayList<>();
+                StringTokenizer st = new StringTokenizer(str, ",");
+
+                while (st.hasMoreTokens()) {
+                    String token = st.nextToken().trim();
+                    if (token.length() > 0) {
+                        values.add(token);
+                    }
+                }
+
+                if (values.size() > 0) {
+                    compressionMimeTypes = values.toArray(
+                            new String[values.size()]);
+                } else {
+                    compressionMimeTypes = null;
+                }
+
                 if (debug > 0) {
-                    System.out.println("compressionThreshold should be either 0 - no compression or >= " + minThreshold);
-                    System.out.println("compressionThreshold set to " + minThreshold);
+                    System.out.println("compressionMimeTypes set to " +
+                            Arrays.toString(compressionMimeTypes));
                 }
-                compressionThreshold = minThreshold;
             }
         }
 
-        str = getInitParameter("compressionBuffer");
-        if (str != null) {
-            compressionBuffer = Integer.parseInt(str);
-            if (compressionBuffer < minBuffer) {
-                if (debug > 0) {
-                    System.out.println("compressionBuffer should be >= " + minBuffer);
-                    System.out.println("compressionBuffer set to " + minBuffer);
-                }
-                compressionBuffer = minBuffer;
-            }
-        }
+    }
 
-        str = getInitParameter("compressionMimeTypes");
-        if (str != null) {
-            List<String> values = new ArrayList<>();
-            StringTokenizer st = new StringTokenizer(str, ",");
+    /**
+    * Take this filter out of service.
+    */
+    @Override
+    public void destroy() {
 
-            while (st.hasMoreTokens()) {
-                String token = st.nextToken().trim();
-                if (token.length() > 0) {
-                    values.add(token);
-                }
-            }
+        this.config = null;
 
-            if (values.size() > 0) {
-                compressionMimeTypes = values.toArray(
-                        new String[values.size()]);
-            } else {
-                compressionMimeTypes = null;
-            }
-
-            if (debug > 0) {
-                System.out.println("compressionMimeTypes set to " +
-                        Arrays.toString(compressionMimeTypes));
-            }
-        }
     }
 
     /**
@@ -146,8 +171,8 @@ public class CompressionFilter extends GenericFilter {
      * (<code>chain.doFilter()</code>), <br>
      **/
     @Override
-    public void doFilter (ServletRequest request, ServletResponse response, FilterChain chain )
-            throws IOException, ServletException {
+    public void doFilter ( ServletRequest request, ServletResponse response,
+                        FilterChain chain ) throws IOException, ServletException {
 
         if (debug > 0) {
             System.out.println("@doFilter");
@@ -155,7 +180,7 @@ public class CompressionFilter extends GenericFilter {
 
         if (compressionThreshold == 0) {
             if (debug > 0) {
-                System.out.println("doFilter got called, but compressionThreshold is set to 0 - no compression");
+                System.out.println("doFilter got called, but compressionTreshold is set to 0 - no compression");
             }
             chain.doFilter(request, response);
             return;
@@ -220,5 +245,24 @@ public class CompressionFilter extends GenericFilter {
             return;
         }
     }
+
+    /**
+     * Set filter config
+     * This function is equivalent to init. Required by Weblogic 6.1
+     *
+     * @param filterConfig The filter configuration object
+     */
+    public void setFilterConfig(FilterConfig filterConfig) {
+        init(filterConfig);
+    }
+
+    /**
+     * Return filter config
+     * Required by Weblogic 6.1
+     */
+    public FilterConfig getFilterConfig() {
+        return config;
+    }
+
 }
 

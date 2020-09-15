@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.jasper.runtime;
 
 import java.beans.PropertyEditor;
@@ -22,6 +23,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Method;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Enumeration;
 
 import javax.servlet.RequestDispatcher;
@@ -29,18 +33,14 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
 import javax.servlet.jsp.tagext.BodyContent;
-import javax.servlet.jsp.tagext.BodyTag;
-import javax.servlet.jsp.tagext.Tag;
 
+import org.apache.jasper.Constants;
 import org.apache.jasper.JasperException;
 import org.apache.jasper.compiler.Localizer;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.InstanceManager;
+import org.apache.jasper.util.ExceptionUtils;
 
 /**
  * Bunch of util methods that are used by code generated for useBean,
@@ -56,7 +56,35 @@ import org.apache.tomcat.InstanceManager;
  */
 public class JspRuntimeLibrary {
 
-    private static final Log log = LogFactory.getLog(JspRuntimeLibrary.class);
+    protected static class PrivilegedIntrospectHelper
+        implements PrivilegedExceptionAction<Void> {
+
+        private final Object bean;
+        private final String prop;
+        private final String value;
+        private final ServletRequest request;
+        private final String param;
+        private final boolean ignoreMethodNF;
+
+        PrivilegedIntrospectHelper(Object bean, String prop,
+                                   String value, ServletRequest request,
+                                   String param, boolean ignoreMethodNF)
+        {
+            this.bean = bean;
+            this.prop = prop;
+            this.value = value;
+            this.request = request;
+            this.param = param;
+            this.ignoreMethodNF = ignoreMethodNF;
+        }
+
+        @Override
+        public Void run() throws JasperException {
+            internalIntrospecthelper(
+                bean,prop,value,request,param,ignoreMethodNF);
+            return null;
+        }
+    }
 
     /**
      * Returns the value of the javax.servlet.error.exception request
@@ -66,8 +94,6 @@ public class JspRuntimeLibrary {
      * This method is called at the beginning of the generated servlet code
      * for a JSP error page, when the "exception" implicit scripting language
      * variable is initialized.
-     * @param request The Servlet request
-     * @return the throwable in the error attribute if any
      */
     public static Throwable getThrowable(ServletRequest request) {
         Throwable error = (Throwable) request.getAttribute(
@@ -266,7 +292,29 @@ public class JspRuntimeLibrary {
     public static void introspecthelper(Object bean, String prop,
                                         String value, ServletRequest request,
                                         String param, boolean ignoreMethodNF)
-                                        throws JasperException {
+                                        throws JasperException
+    {
+        if( Constants.IS_SECURITY_ENABLED ) {
+            try {
+                PrivilegedIntrospectHelper dp =
+                    new PrivilegedIntrospectHelper(
+                        bean,prop,value,request,param,ignoreMethodNF);
+                AccessController.doPrivileged(dp);
+            } catch( PrivilegedActionException pe) {
+                Exception e = pe.getException();
+                throw (JasperException)e;
+            }
+        } else {
+            internalIntrospecthelper(
+                bean,prop,value,request,param,ignoreMethodNF);
+        }
+    }
+
+    private static void internalIntrospecthelper(Object bean, String prop,
+                                        String value, ServletRequest request,
+                                        String param, boolean ignoreMethodNF)
+                                        throws JasperException
+    {
         Method method = null;
         Class<?> type = null;
         Class<?> propertyEditorClass = null;
@@ -376,13 +424,6 @@ public class JspRuntimeLibrary {
      * Create a typed array.
      * This is a special case where params are passed through
      * the request and the property is indexed.
-     * @param propertyName The property name
-     * @param bean The bean
-     * @param method The method
-     * @param values Array values
-     * @param t The class
-     * @param propertyEditorClass The editor for the property
-     * @throws JasperException An error occurred
      */
     public static void createTypedArray(String propertyName,
                                         Object bean,
@@ -403,12 +444,12 @@ public class JspRuntimeLibrary {
             } else if (t.equals(Integer.class)) {
                 Integer []tmpval = new Integer[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] =  Integer.valueOf(values[i]);
+                    tmpval[i] =  new Integer (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Byte.class)) {
                 Byte[] tmpval = new Byte[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Byte.valueOf(values[i]);
+                    tmpval[i] = new Byte (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Boolean.class)) {
                 Boolean[] tmpval = new Boolean[values.length];
@@ -418,22 +459,22 @@ public class JspRuntimeLibrary {
             } else if (t.equals(Short.class)) {
                 Short[] tmpval = new Short[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Short.valueOf(values[i]);
+                    tmpval[i] = new Short (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Long.class)) {
                 Long[] tmpval = new Long[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Long.valueOf(values[i]);
+                    tmpval[i] = new Long (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Double.class)) {
                 Double[] tmpval = new Double[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Double.valueOf(values[i]);
+                    tmpval[i] = new Double (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Float.class)) {
                 Float[] tmpval = new Float[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Float.valueOf(values[i]);
+                    tmpval[i] = new Float (values[i]);
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(Character.class)) {
                 Character[] tmpval = new Character[values.length];
@@ -453,7 +494,7 @@ public class JspRuntimeLibrary {
             } else if (t.equals(boolean.class)) {
                 boolean[] tmpval = new boolean[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Boolean.parseBoolean(values[i]);
+                    tmpval[i] = (Boolean.valueOf(values[i])).booleanValue();
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(short.class)) {
                 short[] tmpval = new short[values.length];
@@ -468,12 +509,12 @@ public class JspRuntimeLibrary {
             } else if (t.equals(double.class)) {
                 double[] tmpval = new double[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Double.parseDouble(values[i]);
+                    tmpval[i] = Double.valueOf(values[i]).doubleValue();
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(float.class)) {
                 float[] tmpval = new float[values.length];
                 for (int i = 0 ; i < values.length; i++)
-                    tmpval[i] = Float.parseFloat(values[i]);
+                    tmpval[i] = Float.valueOf(values[i]).floatValue();
                 method.invoke (bean, new Object[] {tmpval});
             } else if (t.equals(char.class)) {
                 char[] tmpval = new char[values.length];
@@ -501,24 +542,23 @@ public class JspRuntimeLibrary {
      * @param unescString The string to shell-escape
      * @return The escaped shell string.
      */
+
     public static String escapeQueryString(String unescString) {
-        if (unescString == null) {
-            return null;
-        }
+    if ( unescString == null )
+        return null;
 
-        StringBuilder escStringBuilder = new StringBuilder();
-        String shellSpChars = "&;`'\"|*?~<>^()[]{}$\\\n";
+    String escString    = "";
+    String shellSpChars = "&;`'\"|*?~<>^()[]{}$\\\n";
 
-        for (int index = 0; index < unescString.length(); index++) {
-            char nextChar = unescString.charAt(index);
+    for(int index=0; index<unescString.length(); index++) {
+        char nextChar = unescString.charAt(index);
 
-            if (shellSpChars.indexOf(nextChar) != -1) {
-                escStringBuilder.append('\\');
-            }
+        if( shellSpChars.indexOf(nextChar) != -1 )
+        escString += "\\";
 
-            escStringBuilder.append(nextChar);
-        }
-        return escStringBuilder.toString();
+        escString += nextChar;
+    }
+    return escString;
     }
 
     // __begin lookupReadMethodMethod
@@ -829,15 +869,14 @@ public class JspRuntimeLibrary {
      *
      * @param request The servlet request we are processing
      * @param relativePath The possibly relative resource path
-     * @return an absolute path
      */
     public static String getContextRelativePath(ServletRequest request,
                                                 String relativePath) {
 
         if (relativePath.startsWith("/"))
-            return relativePath;
+            return (relativePath);
         if (!(request instanceof HttpServletRequest))
-            return relativePath;
+            return (relativePath);
         HttpServletRequest hrequest = (HttpServletRequest) request;
         String uri = (String) request.getAttribute(
                 RequestDispatcher.INCLUDE_SERVLET_PATH);
@@ -971,40 +1010,4 @@ public class JspRuntimeLibrary {
         return false;
     }
 
-
-    public static JspWriter startBufferedBody(PageContext pageContext, BodyTag tag)
-            throws JspException {
-        BodyContent out = pageContext.pushBody();
-        tag.setBodyContent(out);
-        tag.doInitBody();
-        return out;
-    }
-
-
-    public static void releaseTag(Tag tag, InstanceManager instanceManager, boolean reused) {
-        // Caller ensures pool is non-null if reuse is true
-        if (!reused) {
-            releaseTag(tag, instanceManager);
-        }
-    }
-
-
-    protected static void releaseTag(Tag tag, InstanceManager instanceManager) {
-        try {
-            tag.release();
-        } catch (Throwable t) {
-            ExceptionUtils.handleThrowable(t);
-            log.warn("Error processing release on tag instance of "
-                    + tag.getClass().getName(), t);
-        }
-        try {
-            instanceManager.destroyInstance(tag);
-        } catch (Exception e) {
-            Throwable t = ExceptionUtils.unwrapInvocationTargetException(e);
-            ExceptionUtils.handleThrowable(t);
-            log.warn("Error processing preDestroy on tag instance of "
-                    + tag.getClass().getName(), t);
-        }
-
-    }
 }

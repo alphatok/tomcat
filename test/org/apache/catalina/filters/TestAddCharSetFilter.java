@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import javax.servlet.ServletException;
@@ -92,13 +91,14 @@ public class TestAddCharSetFilter extends TomcatBaseTest {
         // Setup Tomcat instance
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
 
         // Add the Servlet
         CharsetServlet servlet = new CharsetServlet(mode);
         Tomcat.addServlet(ctx, "servlet", servlet);
-        ctx.addServletMappingDecoded("/", "servlet");
+        ctx.addServletMapping("/", "servlet");
 
         // Add the Filter
         FilterDef filterDef = new FilterDef();
@@ -120,8 +120,8 @@ public class TestAddCharSetFilter extends TomcatBaseTest {
 
         List<String> ctHeaders = headers.get("Content-Type");
         assertEquals(1, ctHeaders.size());
-        String ct = ctHeaders.get(0).toLowerCase(Locale.ENGLISH);
-        assertEquals("text/plain;charset=" + expected.toLowerCase(Locale.ENGLISH), ct);
+        String ct = ctHeaders.get(0);
+        assertEquals("text/plain;charset=" + expected, ct);
     }
 
     private static class CharsetServlet extends HttpServlet {

@@ -86,6 +86,12 @@ public class TestMethodExpressionImpl {
 
     @Test
     public void testIsParametersProvided() {
+        TesterBeanB beanB = new TesterBeanB();
+        beanB.setName("Tomcat");
+        ValueExpression var =
+            factory.createValueExpression(beanB, TesterBeanB.class);
+        context.getVariableMapper().setVariable("beanB", var);
+
         MethodExpression me1 = factory.createMethodExpression(
                 context, "${beanB.getName}", String.class, new Class<?>[] {});
         MethodExpression me2 = factory.createMethodExpression(
@@ -98,6 +104,12 @@ public class TestMethodExpressionImpl {
 
     @Test
     public void testInvoke() {
+        TesterBeanB beanB = new TesterBeanB();
+        beanB.setName("B");
+
+        context.getVariableMapper().setVariable("beanB",
+                factory.createValueExpression(beanB, TesterBeanB.class));
+
         MethodExpression me1 = factory.createMethodExpression(
                 context, "${beanB.getName}", String.class, new Class<?>[] {});
         MethodExpression me2 = factory.createMethodExpression(
@@ -463,79 +475,5 @@ public class TestMethodExpressionImpl {
                 "#{beanB.sayHello().length()}", null, new Class<?>[] {});
         Integer result = (Integer) me.invoke(context, null);
         assertEquals(beanB.sayHello().length(), result.intValue());
-    }
-
-
-    @Test
-    public void testBug53792d() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "#{beanB.sayHello().length()}", null, new Class<?>[] {});
-        Integer result = (Integer) me.invoke(context, new Object[] { "foo" });
-        assertEquals(beanB.sayHello().length(), result.intValue());
-    }
-
-
-    @Test
-    public void testBug56797a() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanAA.echo1('Hello World!')}", null , null);
-        Object r = me.invoke(context, null);
-        assertEquals("AA1Hello World!", r.toString());
-    }
-
-
-    @Test
-    public void testBug56797b() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanAA.echo2('Hello World!')}", null , null);
-        Object r = me.invoke(context, null);
-        assertEquals("AA2Hello World!", r.toString());
-    }
-
-
-    @Test(expected=IllegalArgumentException.class)
-    public void testBug57855a() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanAA.echo2}", null , new Class[]{String.class});
-        me.invoke(context, new Object[0]);
-    }
-
-
-    @Test(expected=IllegalArgumentException.class)
-    public void testBug57855b() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanAA.echo2}", null , new Class[]{String.class});
-        me.invoke(context, null);
-    }
-
-    @Test
-    public void testBug57855c() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanB.echo}", null , new Class[]{String.class});
-        me.invoke(context, null);
-    }
-
-
-    @Test
-    public void testBug57855d() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanB.echo}", null , new Class[]{String.class});
-        Object r = me.invoke(context, new String[] { "aaa" });
-        assertEquals("aaa", r.toString());
-    }
-    @Test
-    public void testBug57855e() {
-        MethodExpression me = factory.createMethodExpression(context,
-                "${beanB.echo}", null , new Class[]{String.class});
-        Object r = me.invoke(context, new String[] { "aaa", "bbb" });
-        assertEquals("aaa, bbb", r.toString());
-    }
-
-
-    @Test(expected=IllegalArgumentException.class)
-    public void testBug60844() {
-        MethodExpression me2 = factory.createMethodExpression(context,
-                "${beanC.sayHello}", null , new Class[]{ TesterBeanA.class, TesterBeanB.class});
-        me2.invoke(context, new Object[] { new Object() });
     }
 }

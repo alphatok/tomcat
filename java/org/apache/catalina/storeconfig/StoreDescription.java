@@ -285,9 +285,9 @@ public class StoreDescription {
     }
 
     /**
-     * Is child transient, please don't save this.
+     * is child transient, please don't save this.
      *
-     * @param classname The class name to check
+     * @param classname
      * @return is classname attribute?
      */
     public boolean isTransientChild(String classname) {
@@ -297,9 +297,9 @@ public class StoreDescription {
     }
 
     /**
-     * Is attribute transient, please don't save this.
+     * is attribute transient, please don't save this.
      *
-     * @param attribute The attribute name to check
+     * @param attribute
      * @return is transient attribute?
      */
     public boolean isTransientAttribute(String attribute) {

@@ -49,7 +49,7 @@ class PageInfo {
     private final HashMap<String, LinkedList<String>> xmlPrefixMapper;
     private final HashMap<String, Mark> nonCustomTagPrefixMap;
     private final String jspFile;
-    private static final String defaultLanguage = "java";
+    private final String defaultLanguage = "java";
     private String language;
     private final String defaultExtends = Constants.JSP_SERVLET_BASE;
     private String xtends;
@@ -57,7 +57,7 @@ class PageInfo {
     private String session;
     private boolean isSession = true;
     private String bufferValue;
-    private int buffer = 8*1024;
+    private int buffer = 8*1024;    // XXX confirm
     private String autoFlush;
     private boolean isAutoFlush = true;
     private String isThreadSafeValue;
@@ -97,7 +97,7 @@ class PageInfo {
     private final Vector<String> pluginDcls;  // Id's for tagplugin declarations
 
     // JSP 2.2
-    private boolean errorOnUndeclaredNamespace = false;
+    private boolean errorOnUndeclaredNamepsace = false;
 
     private final boolean isTagFile;
 
@@ -126,11 +126,8 @@ class PageInfo {
     }
 
     /**
-     * Check if the plugin ID has been previously declared.  Make a note
+     * Check if the plugin ID has been previously declared.  Make a not
      * that this Id is now declared.
-     *
-     * @param id The plugin ID to check
-     *
      * @return true if Id has been declared.
      */
     public boolean isPluginDeclared(String id) {
@@ -458,8 +455,8 @@ class PageInfo {
             }
             try {
                 @SuppressWarnings("null") // value can't be null here
-                int k = Integer.parseInt(value.substring(0, value.length()-2));
-                buffer = k * 1024;
+                Integer k = new Integer(value.substring(0, value.length()-2));
+                buffer = k.intValue() * 1024;
             } catch (NumberFormatException e) {
                 if (n == null) {
                     err.jspError("jsp.error.page.invalid.buffer");
@@ -721,11 +718,11 @@ class PageInfo {
     }
 
     public boolean isErrorOnUndeclaredNamespace() {
-        return errorOnUndeclaredNamespace;
+        return errorOnUndeclaredNamepsace;
     }
 
     public void setErrorOnUndeclaredNamespace(
             boolean errorOnUndeclaredNamespace) {
-        this.errorOnUndeclaredNamespace = errorOnUndeclaredNamespace;
+        this.errorOnUndeclaredNamepsace = errorOnUndeclaredNamespace;
     }
 }

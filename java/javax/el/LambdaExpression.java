@@ -19,7 +19,6 @@ package javax.el;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class LambdaExpression {
 
@@ -43,7 +42,9 @@ public class LambdaExpression {
     public Object invoke(ELContext context, Object... args)
             throws ELException {
 
-        Objects.requireNonNull(context);
+        if (context == null) {
+            throw new NullPointerException();
+        }
 
         int formalParamCount = 0;
         if (formalParameters != null) {

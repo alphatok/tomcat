@@ -46,7 +46,7 @@ import org.apache.juli.logging.LogFactory;
 /**
  * Standard implementation of the <b>Engine</b> interface.  Each
  * child container must be a Host implementation to process the specific
- * fully qualified host name of that virtual host. <br>
+ * fully qualified host name of that virtual host. <br/>
  * You can set the jvmRoute direct or with the System.property <b>jvmRoute</b>.
  *
  * @author Craig R. McClanahan
@@ -131,7 +131,9 @@ public class StandardEngine extends ContainerBase implements Engine {
      */
     @Override
     public String getDefaultHost() {
-        return defaultHost;
+
+        return (defaultHost);
+
     }
 
 
@@ -182,7 +184,9 @@ public class StandardEngine extends ContainerBase implements Engine {
      */
     @Override
     public Service getService() {
-        return this.service;
+
+        return (this.service);
+
     }
 
 
@@ -260,6 +264,19 @@ public class StandardEngine extends ContainerBase implements Engine {
 
 
     /**
+     * Return a String representation of this component.
+     */
+    @Override
+    public String toString() {
+
+        StringBuilder sb = new StringBuilder("StandardEngine[");
+        sb.append(getName());
+        sb.append("]");
+        return (sb.toString());
+
+    }
+
+    /**
      * Override the default implementation. If no access log is defined for the
      * Engine, look for one in the Engine's default host and then the default
      * host's ROOT context. If still none is found, return the default NoOp
@@ -333,11 +350,11 @@ public class StandardEngine extends ContainerBase implements Engine {
     @Override
     public ClassLoader getParentClassLoader() {
         if (parentClassLoader != null)
-            return parentClassLoader;
+            return (parentClassLoader);
         if (service != null) {
-            return service.getParentClassLoader();
+            return (service.getParentClassLoader());
         }
-        return ClassLoader.getSystemClassLoader();
+        return (ClassLoader.getSystemClassLoader());
     }
 
 
@@ -354,22 +371,6 @@ public class StandardEngine extends ContainerBase implements Engine {
         }
         // Fall-back
         return super.getCatalinaBase();
-    }
-
-
-    @Override
-    public File getCatalinaHome() {
-        if (service != null) {
-            Server s = service.getServer();
-            if (s != null) {
-                File base = s.getCatalinaHome();
-                if (base != null) {
-                    return base;
-                }
-            }
-        }
-        // Fall-back
-        return super.getCatalinaHome();
     }
 
 

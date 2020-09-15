@@ -18,12 +18,15 @@ package org.apache.catalina.filters;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -31,6 +34,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
 import javax.servlet.http.HttpSession;
+
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 
 /**
  * Provides basic CSRF protection for a web application. The filter assumes
@@ -42,11 +48,43 @@ import javax.servlet.http.HttpSession;
  * returned to the client
  * </ul>
  */
-public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
+public class CsrfPreventionFilter extends FilterBase {
+
+    private static final Log log =
+        LogFactory.getLog(CsrfPreventionFilter.class);
+
+    private String randomClass = SecureRandom.class.getName();
+
+    private Random randomSource;
+
+    private int denyStatus = HttpServletResponse.SC_FORBIDDEN;
 
     private final Set<String> entryPoints = new HashSet<>();
 
     private int nonceCacheSize = 5;
+
+    @Override
+    protected Log getLogger() {
+        return log;
+    }
+
+    /**
+     * Return response status code that is used to reject denied request.
+     */
+    public int getDenyStatus() {
+        return denyStatus;
+    }
+
+    /**
+     * Set response status code that is used to reject denied request. If none
+     * set, the default value of 403 will be used.
+     *
+     * @param denyStatus
+     *            HTTP status code
+     */
+    public void setDenyStatus(int denyStatus) {
+        this.denyStatus = denyStatus;
+    }
 
     /**
      * Entry points are URLs that will not be tested for the presence of a valid
@@ -78,6 +116,39 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
         this.nonceCacheSize = nonceCacheSize;
     }
 
+    /**
+     * Specify the class to use to generate the nonces. Must be in instance of
+     * {@link Random}.
+     *
+     * @param randomClass   The name of the class to use
+     */
+    public void setRandomClass(String randomClass) {
+        this.randomClass = randomClass;
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // Set the parameters
+        super.init(filterConfig);
+
+        try {
+            Class<?> clazz = Class.forName(randomClass);
+            randomSource = (Random) clazz.newInstance();
+        } catch (ClassNotFoundException e) {
+            ServletException se = new ServletException(sm.getString(
+                    "csrfPrevention.invalidRandomClass", randomClass), e);
+            throw se;
+        } catch (InstantiationException e) {
+            ServletException se = new ServletException(sm.getString(
+                    "csrfPrevention.invalidRandomClass", randomClass), e);
+            throw se;
+        } catch (IllegalAccessException e) {
+            ServletException se = new ServletException(sm.getString(
+                    "csrfPrevention.invalidRandomClass", randomClass), e);
+            throw se;
+        }
+    }
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response,
             FilterChain chain) throws IOException, ServletException {
@@ -92,9 +163,15 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
 
             boolean skipNonceCheck = false;
 
-            if (Constants.METHOD_GET.equals(req.getMethod())
-                    && entryPoints.contains(getRequestedPath(req))) {
-                skipNonceCheck = true;
+            if (Constants.METHOD_GET.equals(req.getMethod())) {
+                String path = req.getServletPath();
+                if (req.getPathInfo() != null) {
+                    path = path + req.getPathInfo();
+                }
+
+                if (entryPoints.contains(path)) {
+                    skipNonceCheck = true;
+                }
             }
 
             HttpSession session = req.getSession(false);
@@ -110,7 +187,7 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
 
                 if (nonceCache == null || previousNonce == null ||
                         !nonceCache.contains(previousNonce)) {
-                    res.sendError(getDenyStatus());
+                    res.sendError(denyStatus);
                     return;
                 }
             }
@@ -136,6 +213,44 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
         chain.doFilter(request, wResponse);
     }
 
+
+    @Override
+    protected boolean isConfigProblemFatal() {
+        return true;
+    }
+
+
+    /**
+     * Generate a once time token (nonce) for authenticating subsequent
+     * requests. This will also add the token to the session. The nonce
+     * generation is a simplified version of ManagerBase.generateSessionId().
+     *
+     */
+    protected String generateNonce() {
+        byte random[] = new byte[16];
+
+        // Render the result as a String of hexadecimal digits
+        StringBuilder buffer = new StringBuilder();
+
+        randomSource.nextBytes(random);
+
+        for (int j = 0; j < random.length; j++) {
+            byte b1 = (byte) ((random[j] & 0xf0) >> 4);
+            byte b2 = (byte) (random[j] & 0x0f);
+            if (b1 < 10) {
+                buffer.append((char) ('0' + b1));
+            } else {
+                buffer.append((char) ('A' + (b1 - 10)));
+            }
+            if (b2 < 10) {
+                buffer.append((char) ('0' + b2));
+            } else {
+                buffer.append((char) ('A' + (b2 - 10)));
+            }
+        }
+
+        return buffer.toString();
+    }
 
     protected static class CsrfResponseWrapper
             extends HttpServletResponseWrapper {
@@ -178,7 +293,7 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
         private String addNonce(String url) {
 
             if ((url == null) || (nonce == null)) {
-                return url;
+                return (url);
             }
 
             String path = url;
@@ -205,7 +320,7 @@ public class CsrfPreventionFilter extends CsrfPreventionFilterBase {
             sb.append('=');
             sb.append(nonce);
             sb.append(anchor);
-            return sb.toString();
+            return (sb.toString());
         }
     }
 

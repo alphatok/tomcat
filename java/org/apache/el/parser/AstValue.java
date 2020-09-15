@@ -41,8 +41,6 @@ import org.apache.el.util.ReflectionUtil;
  */
 public final class AstValue extends SimpleNode {
 
-    private static final Object[] EMPTY_ARRAY = new Object[0];
-
     protected static class Target {
         protected Object base;
 
@@ -199,13 +197,29 @@ public final class AstValue extends SimpleNode {
 
         // coerce to the expected type
         Class<?> targetClass = resolver.getType(ctx, t.base, t.property);
-        resolver.setValue(ctx, t.base, t.property,
-                ELSupport.coerceToType(ctx, value, targetClass));
+        if (!isAssignable(value, targetClass)) {
+            resolver.setValue(ctx, t.base, t.property,
+                    ELSupport.coerceToType(value, targetClass));
+        } else {
+            resolver.setValue(ctx, t.base, t.property, value);
+        }
         if (!ctx.isPropertyResolved()) {
             throw new PropertyNotFoundException(MessageFactory.get(
                     "error.resolver.unhandled", t.base, t.property));
         }
     }
+
+    private boolean isAssignable(Object value, Class<?> targetClass) {
+        if (targetClass == null) {
+            return false;
+        } else if (value != null && targetClass.isPrimitive()) {
+            return false;
+        } else if (value != null && !targetClass.isInstance(value)) {
+            return false;
+        }
+        return true;
+    }
+
 
     @Override
     // Interface el.parser.Node uses raw types (and is auto-generated)
@@ -214,7 +228,7 @@ public final class AstValue extends SimpleNode {
             throws ELException {
         Target t = getTarget(ctx);
         Method m = ReflectionUtil.getMethod(
-                ctx, t.base, t.property, paramTypes, null);
+                t.base, t.property, paramTypes, null);
         return new MethodInfo(m.getName(), m.getReturnType(), m
                 .getParameterTypes());
     }
@@ -237,10 +251,10 @@ public final class AstValue extends SimpleNode {
             values = paramValues;
             types = paramTypes;
         }
-        m = ReflectionUtil.getMethod(ctx, t.base, t.property, types, values);
+        m = ReflectionUtil.getMethod(t.base, t.property, types, values);
 
-        // Handle varArgs and any coercion required
-        values = convertArgs(ctx, values, m);
+        // Handle varArgs and any co-ercion required
+        values = convertArgs(values, m);
 
         Object result = null;
         try {
@@ -262,44 +276,18 @@ public final class AstValue extends SimpleNode {
         return result;
     }
 
-    private Object[] convertArgs(EvaluationContext ctx, Object[] src, Method m) {
+    private Object[] convertArgs(Object[] src, Method m) {
         Class<?>[] types = m.getParameterTypes();
         if (types.length == 0) {
-            // Treated as if parameters have been provided so src is ignored
-            return EMPTY_ARRAY;
+            return new Object[0];
         }
 
         int paramCount = types.length;
 
-        if (m.isVarArgs() && paramCount > 1 && (src == null || paramCount > src.length) ||
-                !m.isVarArgs() && (paramCount > 0 && src == null ||
-                        src != null && src.length != paramCount)) {
-            String srcCount = null;
-            if (src != null) {
-                srcCount = Integer.toString(src.length);
-            }
-            String msg;
-            if (m.isVarArgs()) {
-                msg = MessageFactory.get("error.invoke.tooFewParams",
-                        m.getName(), srcCount, Integer.toString(paramCount));
-            } else {
-                msg = MessageFactory.get("error.invoke.wrongParams",
-                        m.getName(), srcCount, Integer.toString(paramCount));
-            }
-            throw new IllegalArgumentException(msg);
-        }
-
-        if (src == null) {
-            // Must be a varargs method with a single parameter.
-            // Use a new array every time since the called code could modify the
-            // contents of the array
-            return new Object[1];
-        }
-
         Object[] dest = new Object[paramCount];
 
         for (int i = 0; i < paramCount - 1; i++) {
-            dest[i] = ELSupport.coerceToType(ctx, src[i], types[i]);
+            dest[i] = ELSupport.coerceToType(src[i], types[i]);
         }
 
         if (m.isVarArgs()) {
@@ -307,13 +295,13 @@ public final class AstValue extends SimpleNode {
                     m.getParameterTypes()[paramCount - 1].getComponentType(),
                     src.length - (paramCount - 1));
             for (int i = 0; i < src.length - (paramCount - 1); i ++) {
-                varArgs[i] = ELSupport.coerceToType(ctx, src[paramCount - 1 + i],
+                varArgs[i] = ELSupport.coerceToType(src[paramCount - 1 + i],
                         types[paramCount - 1].getComponentType());
             }
             dest[paramCount - 1] = varArgs;
         } else {
             dest[paramCount - 1] = ELSupport.coerceToType(
-                    ctx, src[paramCount - 1], types[paramCount - 1]);
+                    src[paramCount - 1], types[paramCount - 1]);
         }
 
         return dest;

@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,15 +35,8 @@ public class TestJspC {
 
     @Before
     public void init() {
-        File tempDir = new File(System.getProperty("tomcat.test.temp",
-                "output/tmp"));
-        outputDir = new File(tempDir, "jspc");
         jspc = new JspC();
-    }
-
-    @After
-    public void cleanup() throws IOException {
-        remove(outputDir);
+        outputDir = new File("output/jspc");
     }
 
     @Test
@@ -90,14 +82,6 @@ public class TestJspC {
     @Test
     public void precompileWebapp_3_1() throws IOException {
         File appDir = new File("test/webapp-3.1");
-        File webappOut = new File(outputDir, appDir.getName());
-        precompile(appDir, webappOut);
-        verify(webappOut);
-    }
-
-    @Test
-    public void precompileWebapp_4_0() throws IOException {
-        File appDir = new File("test/webapp-4.0");
         File webappOut = new File(outputDir, appDir.getName());
         precompile(appDir, webappOut);
         verify(webappOut);

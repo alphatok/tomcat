@@ -16,6 +16,7 @@
  */
 package org.apache.tomcat.util.threads;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RejectedExecutionHandler;
@@ -24,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.res.StringManager;
 
 /**
@@ -39,6 +42,8 @@ public class ThreadPoolExecutor extends java.util.concurrent.ThreadPoolExecutor 
      */
     protected static final StringManager sm = StringManager
             .getManager("org.apache.tomcat.util.threads.res");
+
+    private static final Log log = LogFactory.getLog(ThreadPoolExecutor.class);
 
     /**
      * The number of tasks submitted but not yet finished. This includes tasks
@@ -63,23 +68,19 @@ public class ThreadPoolExecutor extends java.util.concurrent.ThreadPoolExecutor 
 
     public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, RejectedExecutionHandler handler) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, handler);
-        prestartAllCoreThreads();
     }
 
     public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory,
             RejectedExecutionHandler handler) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
-        prestartAllCoreThreads();
     }
 
     public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, new RejectHandler());
-        prestartAllCoreThreads();
     }
 
     public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, new RejectHandler());
-        prestartAllCoreThreads();
     }
 
     public long getThreadRenewalDelay() {
@@ -115,7 +116,16 @@ public class ThreadPoolExecutor extends java.util.concurrent.ThreadPoolExecutor 
                                     "threadPoolExecutor.threadStoppedToAvoidPotentialLeak",
                                     Thread.currentThread().getName());
 
-                    throw new StopPooledThreadException(msg);
+                    Thread.currentThread().setUncaughtExceptionHandler(
+                            new UncaughtExceptionHandler() {
+                                @Override
+                                public void uncaughtException(Thread t,
+                                        Throwable e) {
+                                    // yes, swallow the exception
+                                    log.debug(msg);
+                                }
+                            });
+                    throw new RuntimeException(msg);
                 }
             }
         }
@@ -155,8 +165,6 @@ public class ThreadPoolExecutor extends java.util.concurrent.ThreadPoolExecutor 
      * full after that.
      *
      * @param command the runnable task
-     * @param timeout A timeout for the completion of the task
-     * @param unit The timeout time unit
      * @throws RejectedExecutionException if this task cannot be
      * accepted for execution - the queue is full
      * @throws NullPointerException if command or unit is null
@@ -203,9 +211,18 @@ public class ThreadPoolExecutor extends java.util.concurrent.ThreadPoolExecutor 
         // setCorePoolSize(0) wakes idle threads
         this.setCorePoolSize(0);
 
-        // TaskQueue.take() takes care of timing out, so that we are sure that
-        // all threads of the pool are renewed in a limited time, something like
+        // wait a little so that idle threads wake and poll the queue again,
+        // this time always with a timeout (queue.poll() instead of
+        // queue.take())
+        // even if we did not wait enough, TaskQueue.take() takes care of timing
+        // out, so that we are sure that all threads of the pool are renewed in
+        // a limited time, something like
         // (threadKeepAlive + longest request time)
+        try {
+            Thread.sleep(200L);
+        } catch (InterruptedException e) {
+            // yes, ignore
+        }
 
         if (taskQueue != null) {
             // ok, restore the state of the queue and pool

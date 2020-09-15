@@ -139,7 +139,6 @@ public class Strftime {
     /**
      * Change the timezone used to format dates
      *
-     * @param timeZone The new time zone
      * @see SimpleDateFormat#setTimeZone
      */
     public void setTimeZone( TimeZone timeZone ) {

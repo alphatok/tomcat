@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="ISO-8859-1"?>
 <!--
   Licensed to the Apache Software Foundation (ASF) under one or more
   contributor license agreements.  See the NOTICE file distributed with
@@ -129,7 +129,7 @@
 
 <!-- The "descriptor" element groups a set of descriptor fields whose
      values will be included in the Descriptor for the corresponding
-     metadata info classes.
+     metatdata info classes.
 -->
 <!ELEMENT descriptor (field*)>
 <!ATTLIST descriptor        id           ID             #IMPLIED>

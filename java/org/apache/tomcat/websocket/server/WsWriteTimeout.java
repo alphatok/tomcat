@@ -17,6 +17,7 @@
 package org.apache.tomcat.websocket.server;
 
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,7 +48,9 @@ public class WsWriteTimeout implements BackgroundProcess {
             backgroundProcessCount = 0;
 
             long now = System.currentTimeMillis();
-            for (WsRemoteEndpointImplServer endpoint : endpoints) {
+            Iterator<WsRemoteEndpointImplServer> iter = endpoints.iterator();
+            while (iter.hasNext()) {
+                WsRemoteEndpointImplServer endpoint = iter.next();
                 if (endpoint.getTimeoutExpiry() < now) {
                     // Background thread, not the thread that triggered the
                     // write so no need to use a dispatch

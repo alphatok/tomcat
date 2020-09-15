@@ -38,6 +38,10 @@ abstract class ELNode {
 
     public abstract void accept(Visitor v) throws JasperException;
 
+    /**
+     * Child classes
+     */
+
 
     /**
      * Represents an EL expression: anything in ${ and }.
@@ -200,14 +204,13 @@ abstract class ELNode {
         }
 
         /**
-         * Visit the nodes in the list with the supplied visitor.
-         *
+         * Visit the nodes in the list with the supplied visitor
          * @param v The visitor used
-         *
-         * @throws JasperException if an error occurs while visiting a node
          */
         public void visit(Visitor v) throws JasperException {
-            for (ELNode n : list) {
+            Iterator<ELNode> iter = list.iterator();
+            while (iter.hasNext()) {
+                ELNode n = iter.next();
                 n.accept(v);
             }
         }
@@ -224,7 +227,9 @@ abstract class ELNode {
          * @return true if the expression contains a ${...}
          */
         public boolean containsEL() {
-            for (ELNode n : list) {
+            Iterator<ELNode> iter = list.iterator();
+            while (iter.hasNext()) {
+                ELNode n = iter.next();
                 if (n instanceof Root) {
                     return true;
                 }

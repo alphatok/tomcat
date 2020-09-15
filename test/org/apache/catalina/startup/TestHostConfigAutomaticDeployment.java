@@ -20,7 +20,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -913,7 +917,6 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
         }
         if (!resultWar && !resultDir) {
             if (resultXml) {
-                Assert.assertNotNull(ctxt);
                 Assert.assertEquals(LifecycleState.FAILED, ctxt.getState());
             } else {
                 Assert.assertNull(ctxt);
@@ -1116,39 +1119,35 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
         tomcat.start();
         host.backgroundProcess();
 
-        // Update the last modified time. Make sure that the OS reports a change
-        // in modification time that HostConfig can detect.
+        // Update the last modified time. Add a few seconds to make sure that
+        // the OS reports a change in modification time.
         switch (toModify) {
             case XML:
                 if (xml == null) {
                     Assert.fail();
                 } else {
-                    xml.setLastModified(System.currentTimeMillis() -
-                            10 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
+                    xml.setLastModified(System.currentTimeMillis() + 5000);
                 }
                 break;
             case EXT:
                 if (ext == null) {
                     Assert.fail();
                 } else {
-                    ext.setLastModified(System.currentTimeMillis() -
-                            10 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
+                    ext.setLastModified(System.currentTimeMillis() + 5000);
                 }
                 break;
             case WAR:
                 if (war == null) {
                     Assert.fail();
                 } else {
-                    war.setLastModified(System.currentTimeMillis() -
-                            10 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
+                    war.setLastModified(System.currentTimeMillis() + 5000);
                 }
                 break;
             case DIR:
                 if (dir == null) {
                     Assert.fail();
                 } else {
-                    dir.setLastModified(System.currentTimeMillis() -
-                            10 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
+                    dir.setLastModified(System.currentTimeMillis() + 5000);
                 }
                 break;
             default:
@@ -1192,7 +1191,6 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
         }
         if (!resultWar && !resultDir) {
             if (resultXml) {
-                Assert.assertNotNull(newContext);
                 if (!startExternalWar && !startExternalDir) {
                     Assert.assertEquals(LifecycleState.FAILED,
                             newContext.getState());
@@ -1513,7 +1511,6 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
         }
         if (!resultWar && !resultDir) {
             if (resultXml) {
-                Assert.assertNotNull(newContext);
                 if (!startExternalWar && !startExternalDir) {
                     Assert.assertEquals(LifecycleState.FAILED,
                             newContext.getState());
@@ -1663,9 +1660,9 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
         File dir = new File(getTomcatInstance().getHost().getAppBaseFile(),
                 APP_NAME.getBaseName());
         if (withXml) {
-            recursiveCopy(DIR_XML_SOURCE.toPath(), dir.toPath());
+            recurrsiveCopy(DIR_XML_SOURCE.toPath(), dir.toPath());
         } else {
-            recursiveCopy(DIR_SOURCE.toPath(), dir.toPath());
+            recurrsiveCopy(DIR_SOURCE.toPath(), dir.toPath());
         }
         return dir;
     }
@@ -1673,16 +1670,16 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
     private File createDirXmlInAppbase() throws IOException {
         File dir = new File(getTomcatInstance().getHost().getAppBaseFile(),
                 APP_NAME.getBaseName() + "/META-INF");
-        recursiveCopy(DIR_XML_SOURCE_META_INF.toPath(), dir.toPath());
+        recurrsiveCopy(DIR_XML_SOURCE_META_INF.toPath(), dir.toPath());
         return dir;
     }
 
     private File createDirInExternal(boolean withXml) throws IOException {
         File ext = new File(external, "external" + ".war");
         if (withXml) {
-            recursiveCopy(DIR_XML_SOURCE.toPath(), ext.toPath());
+            recurrsiveCopy(DIR_XML_SOURCE.toPath(), ext.toPath());
         } else {
-            recursiveCopy(DIR_SOURCE.toPath(), ext.toPath());
+            recurrsiveCopy(DIR_SOURCE.toPath(), ext.toPath());
         }
         return ext;
     }
@@ -1696,9 +1693,6 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
             dest = new File(external, "external" + ".war");
         }
         Files.copy(src.toPath(), dest.toPath());
-        // Make sure that HostConfig thinks the WAR has been modified.
-        dest.setLastModified(
-                System.currentTimeMillis() - 2 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
         return dest;
     }
 
@@ -1709,9 +1703,6 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
             Assert.assertTrue(parent.mkdirs());
         }
         Files.copy(XML_SOURCE.toPath(), xml.toPath());
-        // Make sure that HostConfig thinks the xml has been modified.
-        xml.setLastModified(
-                System.currentTimeMillis() - 2 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
         return xml;
     }
 
@@ -1745,11 +1736,41 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
             context.append("\" />");
             fos.write(context.toString().getBytes(StandardCharsets.ISO_8859_1));
         }
-        // Make sure that HostConfig thinks the xml has been modified.
-        xml.setLastModified(
-                System.currentTimeMillis() - 2 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
         return xml;
     }
+
+    private static void recurrsiveCopy(final Path src, final Path dest)
+            throws IOException {
+
+        Files.walkFileTree(src, new FileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir,
+                    BasicFileAttributes attrs) throws IOException {
+                Files.copy(dir, dest.resolve(src.relativize(dir)));
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file,
+                    BasicFileAttributes attrs) throws IOException {
+                Files.copy(file, dest.resolve(src.relativize(file)));
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException ioe)
+                    throws IOException {
+                throw ioe;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException ioe)
+                    throws IOException {
+                // NO-OP
+                return FileVisitResult.CONTINUE;
+            }});
+    }
+
 
     private static class StateTracker implements LifecycleListener {
 
@@ -1886,85 +1907,5 @@ public class TestHostConfigAutomaticDeployment extends TomcatBaseTest {
 
     public static class TesterContext extends StandardContext {
         // No functional change
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineNoContextFF() throws Exception {
-        doTestUpdateWarOffline(WAR_SOURCE, false, false);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineNoContextTF() throws Exception {
-        doTestUpdateWarOffline(WAR_SOURCE, true, false);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineNoContextFT() throws Exception {
-        doTestUpdateWarOffline(WAR_SOURCE, false, true);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineNoContextTT() throws Exception {
-        doTestUpdateWarOffline(WAR_SOURCE, true, true);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineContextFF() throws Exception {
-        doTestUpdateWarOffline(WAR_XML_SOURCE, false, false);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineContextTF() throws Exception {
-        doTestUpdateWarOffline(WAR_XML_SOURCE, true, false);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineContextFT() throws Exception {
-        doTestUpdateWarOffline(WAR_XML_SOURCE, false, true);
-    }
-
-
-    @Test
-    public void testUpdateWarOfflineContextTT() throws Exception {
-        doTestUpdateWarOffline(WAR_XML_SOURCE, true, true);
-    }
-
-
-    private void doTestUpdateWarOffline(File srcWar, boolean deployOnStartUp, boolean autoDeploy)
-            throws Exception {
-        Tomcat tomcat = getTomcatInstance();
-        StandardHost host = (StandardHost) tomcat.getHost();
-        host.setDeployOnStartup(deployOnStartUp);
-
-        File war = createWar(srcWar, true);
-        // Make the WAR appear to have been created earlier
-        war.setLastModified(war.lastModified() - 2 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS);
-
-        tomcat.addWebapp(APP_NAME.getPath(), war.getAbsolutePath());
-        tomcat.start();
-
-        // Get the last modified timestamp for the expanded dir
-        File dir = new File(host.getAppBase(), APP_NAME.getBaseName());
-        // Make the DIR appear to have been created earlier
-        long lastModified = war.lastModified() - 2 * HostConfig.FILE_MODIFICATION_RESOLUTION_MS;
-        dir.setLastModified(lastModified);
-
-        host.stop();
-        war.setLastModified(System.currentTimeMillis());
-        host.start();
-        if (autoDeploy) {
-            host.backgroundProcess();
-        }
-
-        long newLastModified = dir.lastModified();
-
-        Assert.assertNotEquals("Timestamp hasn't changed", lastModified,  newLastModified);
     }
 }

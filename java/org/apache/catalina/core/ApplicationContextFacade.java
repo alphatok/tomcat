@@ -32,7 +32,6 @@ import java.util.EventListener;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterRegistration;
@@ -41,7 +40,6 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
-import javax.servlet.ServletRegistration.Dynamic;
 import javax.servlet.SessionCookieConfig;
 import javax.servlet.SessionTrackingMode;
 import javax.servlet.descriptor.JspConfigDescriptor;
@@ -63,13 +61,13 @@ public class ApplicationContextFacade implements ServletContext {
     /**
      * Cache Class object used for reflection.
      */
-    private final Map<String,Class<?>[]> classCache;
+    private final HashMap<String,Class<?>[]> classCache;
 
 
     /**
      * Cache method object.
      */
-    private final Map<String,Method> objectCache;
+    private final HashMap<String,Method> objectCache;
 
 
     // ----------------------------------------------------------- Constructors
@@ -86,7 +84,7 @@ public class ApplicationContextFacade implements ServletContext {
         this.context = context;
 
         classCache = new HashMap<>();
-        objectCache = new ConcurrentHashMap<>();
+        objectCache = new HashMap<>();
         initClassCache();
     }
 
@@ -145,7 +143,7 @@ public class ApplicationContextFacade implements ServletContext {
             (theContext instanceof ApplicationContext)){
             theContext = ((ApplicationContext)theContext).getFacade();
         }
-        return theContext;
+        return (theContext);
     }
 
 
@@ -539,17 +537,6 @@ public class ApplicationContextFacade implements ServletContext {
 
 
     @Override
-    public Dynamic addJspFile(String jspName, String jspFile) {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            return (ServletRegistration.Dynamic) doPrivileged("addJspFile",
-                    new Object[]{jspName, jspFile});
-        } else {
-            return context.addJspFile(jspName, jspFile);
-        }
-    }
-
-
-    @Override
     @SuppressWarnings("unchecked") // doPrivileged() returns the correct type
     public <T extends Servlet> T createServlet(Class<T> c)
     throws ServletException {
@@ -781,66 +768,6 @@ public class ApplicationContextFacade implements ServletContext {
     }
 
 
-    @Override
-    public int getSessionTimeout() {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            return ((Integer) doPrivileged("getSessionTimeout", null)).intValue();
-        } else  {
-            return context.getSessionTimeout();
-        }
-    }
-
-
-    @Override
-    public void setSessionTimeout(int sessionTimeout) {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            doPrivileged("setSessionTimeout", new Object[] { Integer.valueOf(sessionTimeout) });
-        } else  {
-            context.setSessionTimeout(sessionTimeout);
-        }
-    }
-
-
-    @Override
-    public String getRequestCharacterEncoding() {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            return (String) doPrivileged("getRequestCharacterEncoding", null);
-        } else  {
-            return context.getRequestCharacterEncoding();
-        }
-    }
-
-
-    @Override
-    public void setRequestCharacterEncoding(String encoding) {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            doPrivileged("setRequestCharacterEncoding", new Object[] { encoding });
-        } else  {
-            context.setRequestCharacterEncoding(encoding);
-        }
-    }
-
-
-    @Override
-    public String getResponseCharacterEncoding() {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            return (String) doPrivileged("getResponseCharacterEncoding", null);
-        } else  {
-            return context.getResponseCharacterEncoding();
-        }
-    }
-
-
-    @Override
-    public void setResponseCharacterEncoding(String encoding) {
-        if (SecurityUtil.isPackageProtectionEnabled()) {
-            doPrivileged("setResponseCharacterEncoding", new Object[] { encoding });
-        } else  {
-            context.setResponseCharacterEncoding(encoding);
-        }
-    }
-
-
     /**
      * Use reflection to invoke the requested method. Cache the method object
      * to speed up the process
@@ -860,7 +787,7 @@ public class ApplicationContextFacade implements ServletContext {
     /**
      * Use reflection to invoke the requested method. Cache the method object
      * to speed up the process
-     * @param appContext The ApplicationContext object on which the method
+     * @param appContext The AppliationContext object on which the method
      *                   will be invoked
      * @param methodName The method to call.
      * @param params The arguments passed to the called method.
@@ -918,7 +845,7 @@ public class ApplicationContextFacade implements ServletContext {
     /**
      * Executes the method of the specified <code>ApplicationContext</code>
      * @param method The method object to be invoked.
-     * @param context The ApplicationContext object on which the method
+     * @param context The AppliationContext object on which the method
      *                   will be invoked
      * @param params The arguments passed to the called method.
      */
@@ -930,8 +857,12 @@ public class ApplicationContextFacade implements ServletContext {
                    InvocationTargetException {
 
         if (SecurityUtil.isPackageProtectionEnabled()){
-           return AccessController.doPrivileged(
-                   new PrivilegedExecuteMethod(method, context,  params));
+           return AccessController.doPrivileged(new PrivilegedExceptionAction<Object>(){
+                @Override
+                public Object run() throws IllegalAccessException, InvocationTargetException{
+                    return method.invoke(context,  params);
+                }
+            });
         } else {
             return method.invoke(context, params);
         }
@@ -962,24 +893,5 @@ public class ApplicationContextFacade implements ServletContext {
         }
 
         throw realException;
-    }
-
-
-    private static class PrivilegedExecuteMethod implements PrivilegedExceptionAction<Object> {
-
-        private final Method method;
-        private final ApplicationContext context;
-        private final Object[] params;
-
-        public PrivilegedExecuteMethod(Method method, ApplicationContext context, Object[] params) {
-            this.method = method;
-            this.context = context;
-            this.params = params;
-        }
-
-        @Override
-        public Object run() throws Exception {
-            return method.invoke(context, params);
-        }
     }
 }

@@ -65,6 +65,16 @@ public class Constants {
         System.getProperty("org.apache.jasper.Constants.SERVLET_CLASSPATH", "org.apache.catalina.jsp_classpath");
 
     /**
+     * Request attribute for <code>&lt;jsp-file&gt;</code> element of a
+     * servlet definition.  If present on a request, this overrides the
+     * value returned by <code>request.getServletPath()</code> to select
+     * the JSP page to be executed.
+     */
+    public static final String JSP_FILE =
+        System.getProperty("org.apache.jasper.Constants.JSP_FILE", "org.apache.catalina.jsp_file");
+
+
+    /**
      * Default size of the JSP buffer.
      */
     public static final int DEFAULT_BUFFER_SIZE = 8 * 1024;
@@ -78,6 +88,11 @@ public class Constants {
      * Default tag handler pool size.
      */
     public static final int MAX_POOL_SIZE = 5;
+
+    /**
+     * Platform specific new line sequence.
+     */
+    public static final String NEWLINE = System.getProperty("line.separator");
 
     /**
      * The query parameter that causes the JSP engine to just
@@ -120,7 +135,7 @@ public class Constants {
         (System.getSecurityManager() != null);
 
     public static final boolean USE_INSTANCE_MANAGER_FOR_TAGS =
-        Boolean.parseBoolean(System.getProperty("org.apache.jasper.Constants.USE_INSTANCE_MANAGER_FOR_TAGS", "false"));
+        Boolean.valueOf(System.getProperty("org.apache.jasper.Constants.USE_INSTANCE_MANAGER_FOR_TAGS", "false")).booleanValue();
 
     /**
      * The name of the path parameter used to pass the session identifier

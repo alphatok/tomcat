@@ -17,7 +17,7 @@
 
 package org.apache.tomcat.jni;
 
-/** Windows Registry support
+/** Windows Registy support
  *
  * @author Mladen Turk
  */
@@ -57,7 +57,6 @@ public class Registry {
      * @param sam Access mask that specifies the access rights for the key.
      * @param pool Pool used for native memory allocation
      * @return Opened Registry key
-     * @throws Error An error occurred
      */
     public static native long create(int root, String name, int sam, long pool)
         throws Error;
@@ -69,7 +68,6 @@ public class Registry {
      * @param sam Access mask that specifies the access rights for the key.
      * @param pool Pool used for native memory allocation
      * @return Opened Registry key
-     * @throws Error An error occurred
      */
     public static native long open(int root, String name, int sam, long pool)
         throws Error;
@@ -77,7 +75,6 @@ public class Registry {
     /**
      * Close the specified Registry key.
      * @param key The Registry key descriptor to close.
-     * @return the operation status
      */
     public static native int close(long key);
 
@@ -94,7 +91,6 @@ public class Registry {
      * @param key The Registry key descriptor to use.
      * @param name The name of the value to query
      * @return Registry key value
-     * @throws Error An error occurred
      */
     public static native int getValueI(long key, String name)
         throws Error;
@@ -104,7 +100,6 @@ public class Registry {
      * @param key The Registry key descriptor to use.
      * @param name The name of the value to query
      * @return Registry key value
-     * @throws Error An error occurred
      */
     public static native long getValueJ(long key, String name)
         throws Error;
@@ -122,7 +117,6 @@ public class Registry {
      * @param key The Registry key descriptor to use.
      * @param name The name of the value to query
      * @return Registry key value
-     * @throws Error An error occurred
      */
     public static native String getValueS(long key, String name)
         throws Error;
@@ -132,7 +126,6 @@ public class Registry {
      * @param key The Registry key descriptor to use.
      * @param name The name of the value to query
      * @return Registry key value
-     * @throws Error An error occurred
      */
     public static native String[] getValueA(long key, String name)
         throws Error;
@@ -142,7 +135,6 @@ public class Registry {
      * @param key The Registry key descriptor to use.
      * @param name The name of the value to query
      * @return Registry key value
-     * @throws Error An error occurred
      */
     public static native byte[] getValueB(long key, String name)
         throws Error;
@@ -206,7 +198,6 @@ public class Registry {
      * Enumerate the Registry subkeys
      * @param key The Registry key descriptor to use.
      * @return Array of all subkey names
-     * @throws Error An error occurred
      */
     public static native String[] enumKeys(long key)
         throws Error;
@@ -215,7 +206,6 @@ public class Registry {
      * Enumerate the Registry values
      * @param key The Registry key descriptor to use.
      * @return Array of all value names
-     * @throws Error An error occurred
      */
     public static native String[] enumValues(long key)
         throws Error;

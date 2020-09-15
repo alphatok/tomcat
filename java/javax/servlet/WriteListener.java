@@ -32,14 +32,14 @@ public interface WriteListener extends java.util.EventListener{
      * {@link ServletOutputStream#isReady()} has returned false and it has since
      * become possible to write data.
      *
-     * @throws IOException if an I/O error occurs while processing this event
+     * @throws IOException
      */
     public void onWritePossible() throws IOException;
 
     /**
      * Invoked if an error occurs while writing the response.
      *
-     * @param throwable The throwable that represents the error that occurred
+     * @param throwable
      */
     public void onError(java.lang.Throwable throwable);
 }

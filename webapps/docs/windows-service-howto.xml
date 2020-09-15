@@ -136,13 +136,13 @@
     <td>Service startup mode can be either <b>auto</b> or <b>manual</b></td>
     </tr>
     <tr>
-    <td>++DependsOn</td>
+    <td>--DependsOn</td>
     <td></td>
     <td>List of services that this service depend on. Dependent services
         are separated using either <b>#</b> or <b>;</b> characters</td>
     </tr>
     <tr>
-    <td>++Environment</td>
+    <td>--Environment</td>
     <td></td>
     <td>List of environment variables that will be provided to the service
         in the form <b>key=value</b>. They are separated using either
@@ -171,56 +171,40 @@
     <tr>
     <td>--Jvm</td>
     <td>auto</td>
-    <td>Use either <b>auto</b> (i.e. find the JVM from the Windows registry)
-        or specify the full path to the <b>jvm.dll</b>.
+    <td>Use either <b>auto</b> or specify the full path to the <b>jvm.dll</b>.
         You can use the environment variable expansion here.</td>
     </tr>
     <tr>
-    <td>++JvmOptions</td>
+    <td>--JvmOptions</td>
     <td>-Xrs</td>
     <td>List of options in the form of <b>-D</b> or <b>-X</b> that will be
         passed to the JVM. The options are separated using either
-        <b>#</b> or <b>;</b> characters. (Not used in <b>exe</b> mode.)</td>
+        <b>#</b> or <b>;</b> characters.</td>
     </tr>
     <tr>
     <td>--Classpath</td>
     <td></td>
-    <td>Set the Java classpath. (Not used in <b>exe</b> mode.)</td>
+    <td>Set the Java classpath</td>
     </tr>
     <tr>
     <td>--JvmMs</td>
     <td></td>
-    <td>Initial memory pool size in MB. (Not used in <b>exe</b> mode.)</td>
+    <td>Initial memory pool size in MB</td>
     </tr>
     <tr>
     <td>--JvmMx</td>
     <td></td>
-    <td>Maximum memory pool size in MB. (Not used in <b>exe</b> mode.)</td>
+    <td>Maximum memory pool size in MB</td>
     </tr>
     <tr>
     <td>--JvmSs</td>
     <td></td>
-    <td>Thread stack size in KB. (Not used in <b>exe</b> mode.)</td>
-    </tr>
-    <tr>
-    <td>--StartMode</td>
-    <td></td>
-    <td>One of <b>jvm</b>, <b>Java</b> or <b>exe</b>. The modes are:
-      <ul>
-        <li>jvm - start Java in-process. Depends on jvm.dll, see <b>--Jvm</b>.</li>
-        <li>Java - same as exe, but automatically uses the default Java
-         executable, i.e. %JAVA_HOME%\bin\java.exe. Make sure JAVA_HOME is set
-         correctly, or use --JavaHome to provide the correct location.
-         If neither is set, procrun will try to find the default JDK (not JRE)
-         from the Windows registry.</li>
-        <li>exe - run the image as a separate process</li>
-      </ul>
-    </td>
+    <td>Thread stack size in KB</td>
     </tr>
     <tr>
     <td>--StartImage</td>
     <td></td>
-    <td>Executable that will be run. Only applies to <b>exe</b> mode.</td>
+    <td>Executable that will be run.</td>
     </tr>
     <tr>
     <td>--StartPath</td>
@@ -229,57 +213,57 @@
     </tr>
     <tr>
     <td>--StartClass</td>
-    <td>Main</td>
-    <td>Class that contains the startup method. Applies to the <b>jvm</b> and
-        <b>Java</b> modes. (Not used in <b>exe</b> mode.) </td>
+    <td></td>
+    <td>Class that will be used for startup.</td>
     </tr>
     <tr>
-    <td>--StartMethod</td>
-    <td>main</td>
-    <td>Method name if differs then main</td>
-    </tr>
-    <tr>
-    <td>++StartParams</td>
+    <td>--StartParams</td>
     <td></td>
     <td>List of parameters that will be passed to either StartImage or
         StartClass. Parameters are separated using either <b>#</b> or
         <b>;</b> character.</td>
     </tr>
     <tr>
-    <td>--StopMode</td>
-    <td></td>
-    <td>One of <b>jvm</b>, <b>Java</b> or <b>exe</b>. See <b>--StartMode</b>
-        for further details. </td>
+    <td>--StartMethod</td>
+    <td>Main</td>
+    <td>Method name if differs then main</td>
+    </tr>
+    <tr>
+    <td>--StartMode</td>
+    <td>executable</td>
+    <td>Can one of <b>jvm</b> <b>java</b> or <b>exe</b></td>
     </tr>
     <tr>
     <td>--StopImage</td>
     <td></td>
-    <td>Executable that will be run on Stop service signal. Only applies to
-        <b>exe</b> mode.</td>
+    <td>Executable that will be run on Stop service signal.</td>
     </tr>
     <tr>
     <td>--StopPath</td>
     <td></td>
-    <td>Working path for the stop image executable. Does not apply to <b>jvm</b>
-        mode.</td>
+    <td>Working path for the stop image executable.</td>
     </tr>
     <tr>
     <td>--StopClass</td>
-    <td>Main</td>
-    <td>Class that will be used on Stop service signal. Applies to the
-        <b>jvm</b> and <b>Java</b> modes. </td>
+    <td></td>
+    <td>Class that will be used on Stop service signal.</td>
     </tr>
     <tr>
-    <td>--StopMethod</td>
-    <td>main</td>
-    <td>Method name if differs then main</td>
-    </tr>
-    <tr>
-    <td>++StopParams</td>
+    <td>--StopParams</td>
     <td></td>
     <td>List of parameters that will be passed to either StopImage or
         StopClass. Parameters are separated using either <b>#</b> or
         <b>;</b> character.</td>
+    </tr>
+    <tr>
+    <td>--StopMethod</td>
+    <td>Main</td>
+    <td>Method name if differs then main</td>
+    </tr>
+    <tr>
+    <td>--StopMode</td>
+    <td>executable</td>
+    <td>Can one of <b>jvm</b> <b>java</b> or <b>exe</b></td>
     </tr>
     <tr>
     <td>--StopTimeout</td>
@@ -289,40 +273,29 @@
     </tr>
     <tr>
     <td>--LogPath</td>
-    <td>%SystemRoot%\System32\LogFiles\Apache</td>
-    <td>Defines the path for logging. Creates the directory if necessary.</td>
+    <td>working path</td>
+    <td>Defines the path for logging</td>
     </tr>
     <tr>
     <td>--LogPrefix</td>
-    <td>commons-daemon</td>
-    <td>Defines the service log filename prefix. The log file is created in the
-        LogPath directory with <code>.YEAR-MONTH-DAY.log</code> suffix</td>
+    <td>jakarta_service</td>
+    <td>Defines the service log filename</td>
     </tr>
     <tr>
     <td>--LogLevel</td>
-    <td>Info</td>
-    <td>Defines the logging level and can be either <b>Error</b>,
-        <b>Info</b>, <b>Warn</b> or <b>Debug</b>. (Case insensitive).</td>
+    <td>INFO</td>
+    <td>Defines the logging level and can be either <b>error</b>,
+        <b>info</b>, <b>warn</b> or <b>debug</b></td>
     </tr>
     <tr>
     <td>--StdOutput</td>
     <td></td>
-    <td>Redirected stdout filename.
-        If named <b>auto</b> then file is created inside <b>LogPath</b> with the
-        name <b>service-stdout.YEAR-MONTH-DAY.log</b>.</td>
+    <td>Redirected stdout filename</td>
     </tr>
     <tr>
     <td>--StdError</td>
     <td></td>
-    <td>Redirected stderr filename.
-        If named <b>auto</b> then file is created inside <b>LogPath</b> with the
-        name <b>service-stderr.YEAR-MONTH-DAY.log</b>.</td>
-    </tr>
-    <tr>
-    <td>--PidFile</td>
-    <td></td>
-    <td>Defines the file name for storing the running process id. Actual file is
-        created in the <b>LogPath</b> directory</td>
+    <td>Redirected stderr filename</td>
     </tr>
     </table>
 
@@ -335,16 +308,18 @@ script. If necessary, you can use the <code>/user</code> switch to specify
 a user to use for the installation of the service.
 </p>
 <p>
-<strong>NOTE:</strong> On Windows Vista or any later operating system with User
-Account Control (UAC) enabled you will be asked for additional privileges
-when 'Tomcat<version-major/>.exe' is launched by the script.<br/>
-If you want to pass additional options to service installer as
-<code>PR_*</code> environment variables, you have to either configure them
-globally in OS, or launch the program that sets them with elevated privileges
-(e.g. right-click on cmd.exe and select "Run as administrator"; on Windows 8
-(or later) or Windows Server 2012 (or later), you can open an elevated command
-prompt for the current directory from the Explorer
-by clicking on the "File" menu bar). See issue <bug>56143</bug> for details.
+<strong>NOTE:</strong> On Windows Vista or any other operating system with User
+Account Control (UAC) enabled you must
+<!-- either disable UAC or [NOTE: Disabling UAC is mostly not a good idea,
+except on Windows Server OSes]  -->
+right-click on cmd.exe and
+select "Run as administrator" in order to run this script. On Windows 8 (or later) or
+Windows Server 2012 (or later), you can open an elevated command prompt
+for the current directory from the explorer
+by clicking on the "File" menu bar.<br/>
+If UAC is enabled,
+neither being logged on with an Administrator account nor using the
+<code>/user</code> switch is sufficient.
 </p>
 
 <source>Install the service named 'Tomcat<version-major/>'
@@ -360,11 +335,11 @@ C:\> service.bat install MyService</source>
 If using tomcat<version-major/>.exe, you need to use the <b>//IS//</b> parameter.</p>
 
 <source>Install the service named 'Tomcat<version-major/>'
-C:\> tomcat<version-major/> //IS//Tomcat<version-major/> --DisplayName="Apache Tomcat <version-major/>" ^
-     --Install="C:\Program Files\Tomcat\bin\tomcat<version-major/>.exe" --Jvm=auto ^
-     --StartMode=jvm --StopMode=jvm ^
-     --StartClass=org.apache.catalina.startup.Bootstrap --StartParams=start ^
-     --StopClass=org.apache.catalina.startup.Bootstrap --StopParams=stop</source>
+C:\> tomcat<version-major/> //IS//Tomcat<version-major/> --DisplayName="Apache Tomcat <version-major/>" \
+C:\> --Install="C:\Program Files\Tomcat\bin\tomcat<version-major/>.exe" --Jvm=auto \
+C:\> --StartMode=jvm --StopMode=jvm \
+C:\> --StartClass=org.apache.catalina.startup.Bootstrap --StartParams=start \
+C:\> --StopClass=org.apache.catalina.startup.Bootstrap --StopParams=stop</source>
 
 </section>
 <section name="Updating services">
@@ -373,15 +348,15 @@ To update the service parameters, you need to use the <b>//US//</b> parameter.
 </p>
 
 <source>Update the service named 'Tomcat<version-major/>'
-C:\> tomcat<version-major/> //US//Tomcat<version-major/> --Description="Apache Tomcat Server - http://tomcat.apache.org/ " ^
-     --Startup=auto --Classpath=%JAVA_HOME%\lib\tools.jar;%CATALINA_HOME%\bin\bootstrap.jar</source>
+C:\> tomcat<version-major/> //US//Tomcat<version-major/> --Description="Apache Tomcat Server - http://tomcat.apache.org/ " \
+C:\> --Startup=auto --Classpath=%JAVA_HOME%\lib\tools.jar;%CATALINA_HOME%\bin\bootstrap.jar</source>
 
 <p>If you gave the service an optional name, you need to specify it like this:
 </p>
 
 <source>Update the service named 'MyService'
-C:\> tomcat<version-major/> //US//MyService --Description="Apache Tomcat Server - http://tomcat.apache.org/ " ^
-     --Startup=auto --Classpath=%JAVA_HOME%\lib\tools.jar;%CATALINA_HOME%\bin\bootstrap.jar</source>
+C:\> tomcat<version-major/> //US//MyService --Description="Apache Tomcat Server - http://tomcat.apache.org/ " \
+C:\> --Startup=auto --Classpath=%JAVA_HOME%\lib\tools.jar;%CATALINA_HOME%\bin\bootstrap.jar</source>
 
 </section>
 <section name="Removing services">

@@ -70,7 +70,7 @@ public interface ClusterManager extends Manager {
 
    /**
     * Set the name of the manager, at host /context name and at engine hostname+/context
-    * @param name The manager name
+    * @param name
     * @since 5.5.10
     */
    public void setName(String name);
@@ -79,14 +79,6 @@ public interface ClusterManager extends Manager {
 
    public void setCluster(CatalinaCluster cluster);
 
-   /**
-    * Open stream and use correct ClassLoader (Container), switching thread
-    * context class loader.
-    *
-    * @param data The data
-    * @return The object input stream
-    * @throws IOException An error occurred
-    */
    public ReplicationStream getReplicationStream(byte[] data) throws IOException;
 
    public ReplicationStream getReplicationStream(byte[] data, int offset, int length) throws IOException;

@@ -18,12 +18,16 @@ package org.apache.catalina.mbeans;
 
 import javax.management.Attribute;
 import javax.management.AttributeNotFoundException;
+import javax.management.InstanceNotFoundException;
 import javax.management.MBeanException;
 import javax.management.ReflectionException;
 import javax.management.RuntimeOperationsException;
+import javax.management.modelmbean.InvalidTargetObjectTypeException;
 
 import org.apache.tomcat.util.descriptor.web.ContextEnvironment;
 import org.apache.tomcat.util.descriptor.web.NamingResources;
+import org.apache.tomcat.util.modeler.BaseModelMBean;
+
 
 /**
  * <p>A <strong>ModelMBean</strong> implementation for the
@@ -31,7 +35,10 @@ import org.apache.tomcat.util.descriptor.web.NamingResources;
  *
  * @author Amy Roh
  */
-public class ContextEnvironmentMBean extends BaseCatalinaMBean<ContextEnvironment> {
+public class ContextEnvironmentMBean extends BaseModelMBean {
+
+
+    // ----------------------------------------------------------- Constructors
 
 
     /**
@@ -43,9 +50,18 @@ public class ContextEnvironmentMBean extends BaseCatalinaMBean<ContextEnvironmen
      * @exception RuntimeOperationsException if an IllegalArgumentException
      *  occurs
      */
-    public ContextEnvironmentMBean() throws MBeanException, RuntimeOperationsException {
+    public ContextEnvironmentMBean()
+        throws MBeanException, RuntimeOperationsException {
+
         super();
+
     }
+
+
+    // ----------------------------------------------------- Instance Variables
+
+
+    // ------------------------------------------------------------- Attributes
 
 
     /**
@@ -62,12 +78,20 @@ public class ContextEnvironmentMBean extends BaseCatalinaMBean<ContextEnvironmen
      *  occurs when invoking the getter
      */
      @Override
-    public void setAttribute(Attribute attribute) throws AttributeNotFoundException, MBeanException,
-            ReflectionException {
+    public void setAttribute(Attribute attribute)
+        throws AttributeNotFoundException, MBeanException,
+        ReflectionException {
 
         super.setAttribute(attribute);
 
-        ContextEnvironment ce = doGetManagedResource();
+        ContextEnvironment ce = null;
+        try {
+            ce = (ContextEnvironment) getManagedResource();
+        } catch (InstanceNotFoundException e) {
+            throw new MBeanException(e);
+        } catch (InvalidTargetObjectTypeException e) {
+             throw new MBeanException(e);
+        }
 
         // cannot use side-effects.  It's removed and added back each time
         // there is a modification in a resource.
@@ -75,4 +99,5 @@ public class ContextEnvironmentMBean extends BaseCatalinaMBean<ContextEnvironmen
         nr.removeEnvironment(ce.getName());
         nr.addEnvironment(ce);
     }
+
 }

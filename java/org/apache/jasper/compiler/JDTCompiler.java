@@ -29,7 +29,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -86,7 +85,7 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
         final ClassLoader classLoader = ctxt.getJspLoader();
         String[] fileNames = new String[] {sourceFile};
         String[] classNames = new String[] {targetClassName};
-        final List<JavacErrorDetail> problemList = new ArrayList<>();
+        final ArrayList<JavacErrorDetail> problemList = new ArrayList<>();
 
         class CompilationUnit implements ICompilationUnit {
 
@@ -106,10 +105,14 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
             @Override
             public char[] getContents() {
                 char[] result = null;
-                try (FileInputStream is = new FileInputStream(sourceFile);
-                        InputStreamReader isr = new InputStreamReader(
-                                is, ctxt.getOptions().getJavaEncoding());
-                        Reader reader = new BufferedReader(isr)) {
+                FileInputStream is = null;
+                InputStreamReader isr = null;
+                Reader reader = null;
+                try {
+                    is = new FileInputStream(sourceFile);
+                    isr = new InputStreamReader(is,
+                            ctxt.getOptions().getJavaEncoding());
+                    reader = new BufferedReader(isr);
                     char[] chars = new char[8192];
                     StringBuilder buf = new StringBuilder();
                     int count;
@@ -121,6 +124,22 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                     buf.getChars(0, result.length, result, 0);
                 } catch (IOException e) {
                     log.error("Compilation error", e);
+                } finally {
+                    if (reader != null) {
+                        try {
+                            reader.close();
+                        } catch (IOException ioe) {/*Ignore*/}
+                    }
+                    if (isr != null) {
+                        try {
+                            isr.close();
+                        } catch (IOException ioe) {/*Ignore*/}
+                    }
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (IOException exc) {/*Ignore*/}
+                    }
                 }
                 return result;
             }
@@ -157,45 +176,45 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                 @Override
                 public NameEnvironmentAnswer
                     findType(char[][] compoundTypeName) {
-                    StringBuilder result = new StringBuilder();
+                    String result = "";
+                    String sep = "";
                     for (int i = 0; i < compoundTypeName.length; i++) {
-                        if(i > 0)
-                            result.append('.');
-                        result.append(compoundTypeName[i]);
+                        result += sep;
+                        result += new String(compoundTypeName[i]);
+                        sep = ".";
                     }
-                    return findType(result.toString());
+                    return findType(result);
                 }
 
                 @Override
                 public NameEnvironmentAnswer
                     findType(char[] typeName,
                              char[][] packageName) {
-                        StringBuilder result = new StringBuilder();
-                        int i=0;
-                        for (; i < packageName.length; i++) {
-                            if(i > 0)
-                                result.append('.');
-                            result.append(packageName[i]);
+                        String result = "";
+                        String sep = "";
+                        for (int i = 0; i < packageName.length; i++) {
+                            result += sep;
+                            result += new String(packageName[i]);
+                            sep = ".";
                         }
-                        if(i > 0)
-                            result.append('.');
-                        result.append(typeName);
-                        return findType(result.toString());
+                        result += sep;
+                        result += new String(typeName);
+                        return findType(result);
                 }
 
                 private NameEnvironmentAnswer findType(String className) {
 
-                    if (className.equals(targetClassName)) {
-                        ICompilationUnit compilationUnit =
-                            new CompilationUnit(sourceFile, className);
-                        return
-                            new NameEnvironmentAnswer(compilationUnit, null);
-                    }
-
-                    String resourceName =
+                    InputStream is = null;
+                    try {
+                        if (className.equals(targetClassName)) {
+                            ICompilationUnit compilationUnit =
+                                new CompilationUnit(sourceFile, className);
+                            return
+                                new NameEnvironmentAnswer(compilationUnit, null);
+                        }
+                        String resourceName =
                             className.replace('.', '/') + ".class";
-
-                    try (InputStream is = classLoader.getResourceAsStream(resourceName)) {
+                        is = classLoader.getResourceAsStream(resourceName);
                         if (is != null) {
                             byte[] classBytes;
                             byte[] buf = new byte[8192];
@@ -218,6 +237,14 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                         log.error("Compilation error", exc);
                     } catch (org.eclipse.jdt.internal.compiler.classfmt.ClassFormatException exc) {
                         log.error("Compilation error", exc);
+                    } finally {
+                        if (is != null) {
+                            try {
+                                is.close();
+                            } catch (IOException exc) {
+                                // Ignore
+                            }
+                        }
                     }
                     return null;
                 }
@@ -227,38 +254,33 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                         return false;
                     }
                     String resourceName = result.replace('.', '/') + ".class";
-                    try (InputStream is =
-                        classLoader.getResourceAsStream(resourceName)) {
-                        return is == null;
-                    } catch (IOException e) {
-                        // we are here, since close on is failed. That means it was not null
-                        return false;
-                    }
+                    InputStream is =
+                        classLoader.getResourceAsStream(resourceName);
+                    return is == null;
                 }
 
                 @Override
                 public boolean isPackage(char[][] parentPackageName,
                                          char[] packageName) {
-                    StringBuilder result = new StringBuilder();
-                    int i=0;
+                    String result = "";
+                    String sep = "";
                     if (parentPackageName != null) {
-                        for (; i < parentPackageName.length; i++) {
-                            if(i > 0)
-                                result.append('.');
-                            result.append(parentPackageName[i]);
+                        for (int i = 0; i < parentPackageName.length; i++) {
+                            result += sep;
+                            String str = new String(parentPackageName[i]);
+                            result += str;
+                            sep = ".";
                         }
                     }
-
-                    if (Character.isUpperCase(packageName[0])) {
-                        if (!isPackage(result.toString())) {
+                    String str = new String(packageName);
+                    if (Character.isUpperCase(str.charAt(0))) {
+                        if (!isPackage(result)) {
                             return false;
                         }
                     }
-                    if(i > 0)
-                        result.append('.');
-                    result.append(packageName);
-
-                    return isPackage(result.toString());
+                    result += sep;
+                    result += str;
+                    return isPackage(result);
                 }
 
                 @Override
@@ -310,21 +332,15 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
             } else if(opt.equals("1.7")) {
                 settings.put(CompilerOptions.OPTION_Source,
                              CompilerOptions.VERSION_1_7);
-            } else if(opt.equals("1.8")) {
-                settings.put(CompilerOptions.OPTION_Source,
-                             CompilerOptions.VERSION_1_8);
-            } else if(opt.equals("1.9")) {
-                settings.put(CompilerOptions.OPTION_Source,
-                             CompilerOptions.VERSION_1_9);
             } else {
                 log.warn("Unknown source VM " + opt + " ignored.");
                 settings.put(CompilerOptions.OPTION_Source,
-                        CompilerOptions.VERSION_1_8);
+                        CompilerOptions.VERSION_1_5);
             }
         } else {
-            // Default to 1.8
+            // Default to 1.5
             settings.put(CompilerOptions.OPTION_Source,
-                    CompilerOptions.VERSION_1_8);
+                    CompilerOptions.VERSION_1_5);
         }
 
         // Target JVM
@@ -357,27 +373,17 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                              CompilerOptions.VERSION_1_7);
                 settings.put(CompilerOptions.OPTION_Compliance,
                         CompilerOptions.VERSION_1_7);
-            } else if(opt.equals("1.8")) {
-                settings.put(CompilerOptions.OPTION_TargetPlatform,
-                             CompilerOptions.VERSION_1_8);
-                settings.put(CompilerOptions.OPTION_Compliance,
-                        CompilerOptions.VERSION_1_8);
-            } else if(opt.equals("1.9")) {
-                settings.put(CompilerOptions.OPTION_TargetPlatform,
-                             CompilerOptions.VERSION_1_9);
-                settings.put(CompilerOptions.OPTION_Compliance,
-                        CompilerOptions.VERSION_1_9);
             } else {
                 log.warn("Unknown target VM " + opt + " ignored.");
                 settings.put(CompilerOptions.OPTION_TargetPlatform,
-                        CompilerOptions.VERSION_1_8);
+                        CompilerOptions.VERSION_1_5);
             }
         } else {
-            // Default to 1.8
+            // Default to 1.5
             settings.put(CompilerOptions.OPTION_TargetPlatform,
-                    CompilerOptions.VERSION_1_8);
+                    CompilerOptions.VERSION_1_5);
             settings.put(CompilerOptions.OPTION_Compliance,
-                    CompilerOptions.VERSION_1_8);
+                    CompilerOptions.VERSION_1_5);
         }
 
         final IProblemFactory problemFactory =
@@ -410,20 +416,23 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
                                 ClassFile classFile = classFiles[i];
                                 char[][] compoundName =
                                     classFile.getCompoundName();
-                                StringBuilder classFileName = new StringBuilder(outputDir).append('/');
+                                String className = "";
+                                String sep = "";
                                 for (int j = 0;
                                      j < compoundName.length; j++) {
-                                    if(j > 0)
-                                        classFileName.append('/');
-                                    classFileName.append(compoundName[j]);
+                                    className += sep;
+                                    className += new String(compoundName[j]);
+                                    sep = ".";
                                 }
                                 byte[] bytes = classFile.getBytes();
-                                classFileName.append(".class");
-                                try (FileOutputStream fout = new FileOutputStream(
-                                        classFileName.toString());
-                                        BufferedOutputStream bos = new BufferedOutputStream(fout)) {
-                                    bos.write(bytes);
-                                }
+                                String outFile = outputDir + "/" +
+                                    className.replace('.', '/') + ".class";
+                                FileOutputStream fout =
+                                    new FileOutputStream(outFile);
+                                BufferedOutputStream bos =
+                                    new BufferedOutputStream(fout);
+                                bos.write(bytes);
+                                bos.close();
                             }
                         }
                     } catch (IOException exc) {
@@ -472,5 +481,8 @@ public class JDTCompiler extends org.apache.jasper.compiler.Compiler {
         if (! options.isSmapSuppressed()) {
             SmapUtil.installSmap(smap);
         }
+
     }
+
+
 }

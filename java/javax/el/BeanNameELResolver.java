@@ -18,7 +18,6 @@ package javax.el;
 
 import java.beans.FeatureDescriptor;
 import java.util.Iterator;
-import java.util.Objects;
 
 /**
  * @since EL 3.0
@@ -33,7 +32,10 @@ public class BeanNameELResolver extends ELResolver {
 
     @Override
     public Object getValue(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base != null || !(property instanceof String)) {
             return null;
         }
@@ -42,7 +44,7 @@ public class BeanNameELResolver extends ELResolver {
 
         if (beanNameResolver.isNameResolved(beanName)) {
             try {
-                Object result = beanNameResolver.getBean(beanName);
+                Object result = beanNameResolver.getBean((String) property);
                 context.setPropertyResolved(base, property);
                 return result;
             } catch (Throwable t) {
@@ -57,7 +59,10 @@ public class BeanNameELResolver extends ELResolver {
     @Override
     public void setValue(ELContext context, Object base, Object property,
             Object value) {
-        Objects.requireNonNull(context);
+
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base != null || !(property instanceof String)) {
             return;
         }
@@ -95,7 +100,10 @@ public class BeanNameELResolver extends ELResolver {
 
     @Override
     public Class<?> getType(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base != null || !(property instanceof String)) {
             return null;
         }
@@ -118,7 +126,10 @@ public class BeanNameELResolver extends ELResolver {
 
     @Override
     public boolean isReadOnly(ELContext context, Object base, Object property) {
-        Objects.requireNonNull(context);
+
+        if (context == null) {
+            throw new NullPointerException();
+        }
         if (base != null || !(property instanceof String)) {
             // Return value undefined
             return false;

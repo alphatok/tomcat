@@ -40,7 +40,7 @@ public class PojoMessageHandlerWholeText
         extends PojoMessageHandlerWholeBase<String> {
 
     private static final StringManager sm =
-            StringManager.getManager(PojoMessageHandlerWholeText.class);
+            StringManager.getManager(Constants.PACKAGE_NAME);
 
     private final List<Decoder> decoders = new ArrayList<>();
     private final Class<?> primitiveType;

@@ -43,7 +43,7 @@ public class ELParser {
 
     public static Node parse(String ref) throws ELException {
         try {
-            return new ELParser(new StringReader(ref)).CompositeExpression();
+            return (new ELParser(new StringReader(ref))).CompositeExpression();
         } catch (ParseException pe) {
             throw new ELException(pe.getMessage());
         }
@@ -112,7 +112,7 @@ void Semicolon() : {}
  */
 void Assignment() : {}
 {
-    LOOKAHEAD(4) LambdaExpression() |
+    LOOKAHEAD(3) LambdaExpression() |
     Choice() ( LOOKAHEAD(2) <ASSIGN> Assignment() #Assign(2) )*
 }
 
@@ -323,7 +323,7 @@ void MethodParameters() #MethodParameters : {}
  */
 void NonLiteral() : {}
 {
-    LOOKAHEAD(5) LambdaExpressionOrInvocation()
+    LOOKAHEAD(3) LambdaExpressionOrInvocation()
     | <LPAREN> Expression() <RPAREN>
     | LOOKAHEAD((<IDENTIFIER> <COLON>)? <IDENTIFIER> <LPAREN>) Function()
     | Identifier()
@@ -473,7 +473,7 @@ java.util.Deque<Integer> deque = new java.util.ArrayDeque<Integer>();
    */
   < LITERAL_EXPRESSION:
     (   (~["$", "#", "\\"])* "\\" (["$", "#"])?
-      | (~["$", "#"])* (["$", "#"] ~["{", "$", "#", "\\"])
+      | (~["$", "#"])* (["$", "#"] ~["{", "$", "#"])
       | (~["$", "#"])+
     )+
     | "$"

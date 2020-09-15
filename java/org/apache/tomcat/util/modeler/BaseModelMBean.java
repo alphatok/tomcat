@@ -62,7 +62,7 @@ import org.apache.juli.logging.LogFactory;
  *    like Object and Class.
  *  - setModelMBean is no longer called on resources ( not used in tomcat )
  *  - no caching of Methods for now - operations and setters are not called repeatedly in most
- *  management use cases. Getters shouldn't be called very frequently either - and even if they
+ *  management use cases. Getters should't be called very frequently either - and even if they
  *  are, the overhead of getting the method should be small compared with other JMX costs ( RMI, etc ).
  *  We can add getter cache if needed.
  *  - removed unused constructor, fields
@@ -208,7 +208,7 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         // Return the results of this method invocation
         // FIXME - should we validate the return type?
-        return result;
+        return (result);
     }
 
 
@@ -236,7 +236,7 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
                 // is the indication of a getter problem
             }
         }
-        return response;
+        return (response);
 
     }
 
@@ -321,7 +321,7 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         // Return the results of this method invocation
         // FIXME - should we validate the return type?
-        return result;
+        return (result);
 
     }
 
@@ -484,7 +484,7 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
             }
         }
 
-        return getAttributes(names);
+        return (getAttributes(names));
 
     }
 
@@ -496,7 +496,6 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
      * Get the instance handle of the object against which we execute
      * all methods in this ModelMBean management interface.
      *
-     * @return the backend managed object
      * @exception InstanceNotFoundException if the managed resource object
      *  cannot be found
      * @exception InvalidTargetObjectTypeException if the managed resource
@@ -524,7 +523,11 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
      * Set the instance handle of the object against which we will execute
      * all methods in this ModelMBean management interface.
      *
-     * The caller can provide the mbean instance or the object name to
+     * <strike>This method will detect and call "setModelMbean" method. A resource
+     * can implement this method to get a reference to the model mbean.
+     * The reference can be used to send notification and access the
+     * registry.
+     * </strike> The caller can provide the mbean instance or the object name to
      * the resource, if needed.
      *
      * @param resource The resource object to be managed
@@ -621,11 +624,11 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         if (listener == null)
             throw new IllegalArgumentException("Listener is null");
+        if (attributeBroadcaster == null)
+            attributeBroadcaster = new BaseNotificationBroadcaster();
 
         // FIXME - currently this removes *all* notifications for this listener
-        if (attributeBroadcaster != null) {
-            attributeBroadcaster.removeNotificationListener(listener);
-        }
+        attributeBroadcaster.removeNotificationListener(listener);
 
     }
 
@@ -803,6 +806,8 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         // Acquire the set of application notifications
         MBeanNotificationInfo current[] = getMBeanInfo().getNotifications();
+        if (current == null)
+            current = new MBeanNotificationInfo[0];
         MBeanNotificationInfo response[] =
             new MBeanNotificationInfo[current.length + 2];
  //       Descriptor descriptor = null;
@@ -835,7 +840,7 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         // Copy remaining notifications as reported by the application
         System.arraycopy(current, 0, response, 2, current.length);
-        return response;
+        return (response);
 
     }
 
@@ -855,15 +860,12 @@ public class BaseModelMBean implements DynamicMBean, MBeanRegistration, ModelMBe
 
         if (listener == null)
             throw new IllegalArgumentException("Listener is null");
+        if (generalBroadcaster == null)
+            generalBroadcaster = new BaseNotificationBroadcaster();
+        generalBroadcaster.removeNotificationListener(listener);
 
-        if (generalBroadcaster != null) {
-            generalBroadcaster.removeNotificationListener(listener);
-        }
 
-        if (attributeBroadcaster != null) {
-            attributeBroadcaster.removeNotificationListener(listener);
-        }
-     }
+    }
 
 
     public String getModelerType() {

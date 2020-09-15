@@ -58,10 +58,12 @@ public class ServerInfo {
         String built = null;
         String number = null;
 
-        Properties props = new Properties();
-        try (InputStream is = ServerInfo.class.getResourceAsStream
-                ("/org/apache/catalina/util/ServerInfo.properties")) {
+        try {
+            InputStream is = ServerInfo.class.getResourceAsStream
+                ("/org/apache/catalina/util/ServerInfo.properties");
+            Properties props = new Properties();
             props.load(is);
+            is.close();
             info = props.getProperty("server.info");
             built = props.getProperty("server.built");
             number = props.getProperty("server.number");
@@ -69,11 +71,11 @@ public class ServerInfo {
             ExceptionUtils.handleThrowable(t);
         }
         if (info == null)
-            info = "Apache Tomcat 9.0.x-dev";
+            info = "Apache Tomcat 8.0.x-dev";
         if (built == null)
             built = "unknown";
         if (number == null)
-            number = "9.0.x";
+            number = "8.0.x";
 
         serverInfo = info;
         serverBuilt = built;
@@ -85,24 +87,30 @@ public class ServerInfo {
 
 
     /**
-     * @return the server identification for this version of Tomcat.
+     * Return the server identification for this version of Tomcat.
      */
     public static String getServerInfo() {
-        return serverInfo;
+
+        return (serverInfo);
+
     }
 
     /**
-     * @return the server built time for this version of Tomcat.
+     * Return the server built time for this version of Tomcat.
      */
     public static String getServerBuilt() {
-        return serverBuilt;
+
+        return (serverBuilt);
+
     }
 
     /**
-     * @return the server's version number.
+     * Return the server's version number.
      */
     public static String getServerNumber() {
-        return serverNumber;
+
+        return (serverNumber);
+
     }
 
     public static void main(String args[]) {

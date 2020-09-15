@@ -311,8 +311,8 @@ public abstract class FileUploadBase {
                 for (FileItem fileItem : items) {
                     try {
                         fileItem.delete();
-                    } catch (Exception ignored) {
-                        // ignored TODO perhaps add to tracker delete failure list somehow?
+                    } catch (Exception e) {
+                        // ignore it
                     }
                 }
             }
@@ -799,22 +799,22 @@ public abstract class FileUploadBase {
                     || (!contentType.toLowerCase(Locale.ENGLISH).startsWith(MULTIPART))) {
                 throw new InvalidContentTypeException(String.format(
                         "the request doesn't contain a %s or %s stream, content type header is %s",
-                        MULTIPART_FORM_DATA, MULTIPART_MIXED, contentType));
+                        MULTIPART_FORM_DATA, MULTIPART_FORM_DATA, contentType));
             }
 
+            InputStream input = ctx.getInputStream();
 
             final long requestSize = ((UploadContext) ctx).contentLength();
 
-            InputStream input; // N.B. this is eventually closed in MultipartStream processing
             if (sizeMax >= 0) {
                 if (requestSize != -1 && requestSize > sizeMax) {
                     throw new SizeLimitExceededException(String.format(
                             "the request was rejected because its size (%s) exceeds the configured maximum (%s)",
-                            Long.valueOf(requestSize), Long.valueOf(sizeMax)),
+                            Long.valueOf(requestSize),
+                            Long.valueOf(sizeMax)),
                             requestSize, sizeMax);
                 }
-                // N.B. this is eventually closed in MultipartStream processing
-                input = new LimitedInputStream(ctx.getInputStream(), sizeMax) {
+                input = new LimitedInputStream(input, sizeMax) {
                     @Override
                     protected void raiseError(long pSizeMax, long pCount)
                             throws IOException {
@@ -825,8 +825,6 @@ public abstract class FileUploadBase {
                         throw new FileUploadIOException(ex);
                     }
                 };
-            } else {
-                input = ctx.getInputStream();
             }
 
             String charEncoding = headerEncoding;
@@ -836,18 +834,11 @@ public abstract class FileUploadBase {
 
             boundary = getBoundary(contentType);
             if (boundary == null) {
-                IOUtils.closeQuietly(input); // avoid possible resource leak
                 throw new FileUploadException("the request was rejected because no multipart boundary was found");
             }
 
             notifier = new MultipartStream.ProgressNotifier(listener, requestSize);
-            try {
-                multi = new MultipartStream(input, boundary, notifier);
-            } catch (IllegalArgumentException iae) {
-                IOUtils.closeQuietly(input); // avoid possible resource leak
-                throw new InvalidContentTypeException(
-                        String.format("The boundary specified in the %s header is too long", CONTENT_TYPE), iae);
-            }
+            multi = new MultipartStream(input, boundary, notifier);
             multi.setHeaderEncoding(charEncoding);
 
             skipPreamble = true;
@@ -1025,7 +1016,7 @@ public abstract class FileUploadBase {
          * detail message.
          */
         public InvalidContentTypeException() {
-            super();
+            // Nothing to do.
         }
 
         /**
@@ -1038,18 +1029,6 @@ public abstract class FileUploadBase {
             super(message);
         }
 
-        /**
-         * Constructs an <code>InvalidContentTypeException</code> with
-         * the specified detail message and cause.
-         *
-         * @param msg The detail message.
-         * @param cause the original cause
-         *
-         * @since 1.3.1
-         */
-        public InvalidContentTypeException(String msg, Throwable cause) {
-            super(msg, cause);
-        }
     }
 
     /**

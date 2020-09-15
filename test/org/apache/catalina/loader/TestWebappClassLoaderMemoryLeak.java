@@ -40,15 +40,16 @@ public class TestWebappClassLoaderMemoryLeak extends TomcatBaseTest {
     public void testTimerThreadLeak() throws Exception {
         Tomcat tomcat = getTomcatInstance();
 
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
+        // Must have a real docBase - just use temp
+        Context ctx =
+            tomcat.addContext("", System.getProperty("java.io.tmpdir"));
 
         if (ctx instanceof StandardContext) {
             ((StandardContext) ctx).setClearReferencesStopTimerThreads(true);
         }
 
         Tomcat.addServlet(ctx, "taskServlet", new TaskServlet());
-        ctx.addServletMappingDecoded("/", "taskServlet");
+        ctx.addServletMapping("/", "taskServlet");
 
         tomcat.start();
 
@@ -62,7 +63,11 @@ public class TestWebappClassLoaderMemoryLeak extends TomcatBaseTest {
         for (Thread thread : threads) {
             if (thread != null && thread.isAlive() &&
                     TaskServlet.TIMER_THREAD_NAME.equals(thread.getName())) {
-                thread.join(5000);
+                int count = 0;
+                while (count < 50 && thread.isAlive()) {
+                    Thread.sleep(100);
+                    count++;
+                }
                 if (thread.isAlive()) {
                     fail("Timer thread still running");
                 }
@@ -72,7 +77,7 @@ public class TestWebappClassLoaderMemoryLeak extends TomcatBaseTest {
 
     /*
      * Get the set of current threads as an array.
-     * Copied from WebappClassLoaderBase
+     * Copied from WebappClassLoader
      */
     private Thread[] getThreads() {
         // Get the current thread group

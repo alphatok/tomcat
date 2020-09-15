@@ -16,8 +16,6 @@
  */
 package org.apache.tomcat.util.buf;
 
-import java.nio.charset.StandardCharsets;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -49,41 +47,41 @@ public class TestUDecoder {
     @Test
     public void testURLDecodeStringValidIso88591Start() {
 
-        String result = UDecoder.URLDecode("%41xxxx", StandardCharsets.ISO_8859_1);
+        String result = UDecoder.URLDecode("%41xxxx", "ISO-8859-1");
         assertEquals("Axxxx", result);
     }
 
     @Test
     public void testURLDecodeStringValidIso88591Middle() {
 
-        String result = UDecoder.URLDecode("xx%41xx", StandardCharsets.ISO_8859_1);
+        String result = UDecoder.URLDecode("xx%41xx", "ISO-8859-1");
         assertEquals("xxAxx", result);
     }
 
     @Test
     public void testURLDecodeStringValidIso88591End() {
 
-        String result = UDecoder.URLDecode("xxxx%41", StandardCharsets.ISO_8859_1);
+        String result = UDecoder.URLDecode("xxxx%41", "ISO-8859-1");
         assertEquals("xxxxA", result);
     }
 
     @Test
     public void testURLDecodeStringValidUtf8Start() {
-        String result = UDecoder.URLDecode("%c3%aaxxxx", StandardCharsets.UTF_8);
+        String result = UDecoder.URLDecode("%c3%aaxxxx", "UTF-8");
         assertEquals("\u00eaxxxx", result);
     }
 
     @Test
     public void testURLDecodeStringValidUtf8Middle() {
 
-        String result = UDecoder.URLDecode("xx%c3%aaxx", StandardCharsets.UTF_8);
+        String result = UDecoder.URLDecode("xx%c3%aaxx", "UTF-8");
         assertEquals("xx\u00eaxx", result);
     }
 
     @Test
     public void testURLDecodeStringValidUtf8End() {
 
-        String result = UDecoder.URLDecode("xxxx%c3%aa", StandardCharsets.UTF_8);
+        String result = UDecoder.URLDecode("xxxx%c3%aa", "UTF-8");
         assertEquals("xxxx\u00ea", result);
     }
 }

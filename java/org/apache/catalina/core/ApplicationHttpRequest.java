@@ -20,34 +20,25 @@ package org.apache.catalina.core;
 
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 import javax.servlet.DispatcherType;
 import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletMapping;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpSession;
-import javax.servlet.http.PushBuilder;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Manager;
 import org.apache.catalina.Session;
-import org.apache.catalina.util.ParameterMap;
 import org.apache.catalina.util.RequestUtil;
-import org.apache.tomcat.util.buf.B2CConverter;
-import org.apache.tomcat.util.buf.MessageBytes;
-import org.apache.tomcat.util.http.Parameters;
 
 
 /**
@@ -80,15 +71,11 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
       RequestDispatcher.INCLUDE_SERVLET_PATH,
       RequestDispatcher.INCLUDE_PATH_INFO,
       RequestDispatcher.INCLUDE_QUERY_STRING,
-      RequestDispatcher.INCLUDE_MAPPING,
       RequestDispatcher.FORWARD_REQUEST_URI,
       RequestDispatcher.FORWARD_CONTEXT_PATH,
       RequestDispatcher.FORWARD_SERVLET_PATH,
       RequestDispatcher.FORWARD_PATH_INFO,
-      RequestDispatcher.FORWARD_QUERY_STRING,
-      RequestDispatcher.FORWARD_MAPPING};
-
-    private static final int SPECIALS_FIRST_FORWARD_INDEX = 6;
+      RequestDispatcher.FORWARD_QUERY_STRING };
 
 
     // ----------------------------------------------------------- Constructors
@@ -98,9 +85,6 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      * Construct a new wrapped request around the specified servlet request.
      *
      * @param request The servlet request being wrapped
-     * @param context The target context for the wrapped request
-     * @param crossContext {@code true} if the wrapped request will be a
-     *                     cross-context request, otherwise {@code false}
      */
     public ApplicationHttpRequest(HttpServletRequest request, Context context,
                                   boolean crossContext) {
@@ -143,7 +127,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
     /**
      * The request parameters for this request.  This is initialized from the
-     * wrapped request.
+     * wrapped request, but updates are allowed.
      */
     protected Map<String, String[]> parameters = null;
 
@@ -191,12 +175,6 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
 
     /**
-     * The mapping for this request.
-     */
-    private HttpServletMapping mapping = null;
-
-
-    /**
      * The currently active session for this request.
      */
     protected Session session = null;
@@ -209,14 +187,6 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
 
     // ------------------------------------------------- ServletRequest Methods
-
-    @Override
-    public ServletContext getServletContext() {
-        if (context == null) {
-            return null;
-        }
-        return context.getServletContext();
-    }
 
 
     /**
@@ -241,9 +211,8 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         if (pos == -1) {
             return getRequest().getAttribute(name);
         } else {
-            if ((specialAttributes[pos] == null) &&
-                    (specialAttributes[SPECIALS_FIRST_FORWARD_INDEX] == null) &&
-                    (pos >= SPECIALS_FIRST_FORWARD_INDEX)) {
+            if ((specialAttributes[pos] == null)
+                && (specialAttributes[5] == null) && (pos >= 5)) {
                 // If it's a forward special attribute, and null, it means this
                 // is an include, so we check the wrapped request since
                 // the request could have been forwarded before the include
@@ -262,7 +231,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public Enumeration<String> getAttributeNames() {
-        return new AttributeNamesEnumerator();
+        return (new AttributeNamesEnumerator());
     }
 
 
@@ -316,13 +285,13 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
     public RequestDispatcher getRequestDispatcher(String path) {
 
         if (context == null)
-            return null;
+            return (null);
 
         // If the path is already context-relative, just pass it through
         if (path == null)
-            return null;
+            return (null);
         else if (path.startsWith("/"))
-            return context.getServletContext().getRequestDispatcher(path);
+            return (context.getServletContext().getRequestDispatcher(path));
 
         // Convert a request-relative path to a context-relative one
         String servletPath =
@@ -348,7 +317,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
             relative = requestPath + path;
         }
 
-        return context.getServletContext().getRequestDispatcher(relative);
+        return (context.getServletContext().getRequestDispatcher(relative));
 
     }
 
@@ -372,7 +341,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getContextPath() {
-        return this.contextPath;
+
+        return (this.contextPath);
+
     }
 
 
@@ -383,13 +354,19 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getParameter(String name) {
+
         parseParameters();
 
-        String[] value = parameters.get(name);
-        if (value == null) {
-            return null;
-        }
-        return value[0];
+        Object value = parameters.get(name);
+        if (value == null)
+            return (null);
+        else if (value instanceof String[])
+            return (((String[]) value)[0]);
+        else if (value instanceof String)
+            return ((String) value);
+        else
+            return (value.toString());
+
     }
 
 
@@ -399,8 +376,10 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public Map<String, String[]> getParameterMap() {
+
         parseParameters();
-        return parameters;
+        return (parameters);
+
     }
 
 
@@ -410,6 +389,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public Enumeration<String> getParameterNames() {
+
         parseParameters();
         return Collections.enumeration(parameters.keySet());
     }
@@ -423,8 +403,23 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String[] getParameterValues(String name) {
+
         parseParameters();
-        return parameters.get(name);
+        Object value = parameters.get(name);
+        if (value == null)
+            return null;
+        else if (value instanceof String[])
+            return ((String[]) value);
+        else if (value instanceof String) {
+            String values[] = new String[1];
+            values[0] = (String) value;
+            return (values);
+        } else {
+            String values[] = new String[1];
+            values[0] = value.toString();
+            return (values);
+        }
+
     }
 
 
@@ -433,21 +428,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getPathInfo() {
-        return this.pathInfo;
-    }
 
+        return (this.pathInfo);
 
-    /**
-     * Override the <code>getPathTranslated()</code> method of the wrapped
-     * request.
-     */
-    @Override
-    public String getPathTranslated() {
-        if (getPathInfo() == null || getServletContext() == null) {
-            return null;
-        }
-
-        return getServletContext().getRealPath(getPathInfo());
     }
 
 
@@ -457,7 +440,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getQueryString() {
-        return this.queryString;
+
+        return (this.queryString);
+
     }
 
 
@@ -467,7 +452,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getRequestURI() {
-        return this.requestURI;
+
+        return (this.requestURI);
+
     }
 
 
@@ -477,7 +464,25 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public StringBuffer getRequestURL() {
-        return RequestUtil.getRequestURL(this);
+
+        StringBuffer url = new StringBuffer();
+        String scheme = getScheme();
+        int port = getServerPort();
+        if (port < 0)
+            port = 80; // Work around java.net.URL bug
+
+        url.append(scheme);
+        url.append("://");
+        url.append(getServerName());
+        if ((scheme.equals("http") && (port != 80))
+            || (scheme.equals("https") && (port != 443))) {
+            url.append(':');
+            url.append(port);
+        }
+        url.append(getRequestURI());
+
+        return (url);
+
     }
 
 
@@ -487,13 +492,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getServletPath() {
-        return this.servletPath;
-    }
 
+        return (this.servletPath);
 
-    @Override
-    public HttpServletMapping getHttpServletMapping() {
-        return mapping;
     }
 
 
@@ -503,7 +504,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      */
     @Override
     public HttpSession getSession() {
-        return getSession(true);
+        return (getSession(true));
     }
 
 
@@ -520,11 +521,11 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
             // There cannot be a session if no context has been assigned yet
             if (context == null)
-                return null;
+                return (null);
 
             // Return the current session if it exists and is valid
             if (session != null && session.isValid()) {
-                return session.getSession();
+                return (session.getSession());
             }
 
             HttpSession other = super.getSession(false);
@@ -578,12 +579,12 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
             String requestedSessionId = getRequestedSessionId();
             if (requestedSessionId == null)
-                return false;
+                return (false);
             if (context == null)
-                return false;
+                return (false);
             Manager manager = context.getManager();
             if (manager == null)
-                return false;
+                return (false);
             Session session = null;
             try {
                 session = manager.findSession(requestedSessionId);
@@ -591,9 +592,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
                 // Ignore
             }
             if ((session != null) && session.isValid()) {
-                return true;
+                return (true);
             } else {
-                return false;
+                return (false);
             }
 
         } else {
@@ -602,13 +603,8 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
     }
 
 
-    @Override
-    public PushBuilder newPushBuilder() {
-        return new ApplicationPushBuilder(this);
-    }
-
-
     // -------------------------------------------------------- Package Methods
+
 
     /**
      * Recycle this request
@@ -617,6 +613,27 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         if (session != null) {
             session.endAccess();
         }
+    }
+
+
+    /**
+     * Perform a shallow copy of the specified Map, and return the result.
+     *
+     * @param orig Origin Map to be copied
+     */
+    Map<String, String[]> copyMap(Map<String, String[]> orig) {
+
+        if (orig == null) {
+            return (new HashMap<>());
+        }
+        HashMap<String, String[]> dest = new HashMap<>();
+
+        for (Map.Entry<String, String[]> entry : orig.entrySet()) {
+            dest.put(entry.getKey(), entry.getValue());
+        }
+
+        return (dest);
+
     }
 
 
@@ -676,7 +693,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         queryString = request.getQueryString();
         requestURI = request.getRequestURI();
         servletPath = request.getServletPath();
-        mapping = request.getHttpServletMapping();
+
     }
 
 
@@ -716,10 +733,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
             return;
         }
 
-        parameters = new ParameterMap<>();
-        parameters.putAll(getRequest().getParameterMap());
+        parameters = new HashMap<>();
+        parameters = copyMap(getRequest().getParameterMap());
         mergeParameters();
-        ((ParameterMap<String,String[]>) parameters).setLocked(true);
         parsedParams = true;
     }
 
@@ -734,12 +750,6 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         this.queryParamString = queryString;
     }
 
-
-    void setMapping(HttpServletMapping mapping) {
-        this.mapping = mapping;
-    }
-
-
     // ------------------------------------------------------ Protected Methods
 
     /**
@@ -752,9 +762,9 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
 
         for (int i = 0; i < specials.length; i++) {
             if (specials[i].equals(name))
-                return true;
+                return (true);
         }
-        return false;
+        return (false);
 
     }
 
@@ -768,10 +778,10 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
     protected int getSpecial(String name) {
         for (int i = 0; i < specials.length; i++) {
             if (specials[i].equals(name)) {
-                return i;
+                return (i);
             }
         }
-        return -1;
+        return (-1);
     }
 
 
@@ -784,10 +794,10 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         for (int i = 0; i < specials.length; i++) {
             if (specials[i].equals(name)) {
                 specialAttributes[i] = value;
-                return true;
+                return (true);
             }
         }
-        return false;
+        return (false);
     }
 
 
@@ -800,10 +810,10 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         for (int i = 0; i < specials.length; i++) {
             if (specials[i].equals(name)) {
                 specialAttributes[i] = null;
-                return true;
+                return (true);
             }
         }
-        return false;
+        return (false);
     }
 
 
@@ -813,28 +823,35 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
      * @param values1 First set of values
      * @param values2 Second set of values
      */
-    private String[] mergeValues(String[] values1, String[] values2) {
+    protected String[] mergeValues(Object values1, Object values2) {
 
-        List<Object> results = new ArrayList<>();
+        ArrayList<Object> results = new ArrayList<>();
 
         if (values1 == null) {
             // Skip - nothing to merge
-        } else {
-            for (String value : values1) {
-                results.add(value);
-            }
-        }
+        } else if (values1 instanceof String)
+            results.add(values1);
+        else if (values1 instanceof String[]) {
+            String values[] = (String[]) values1;
+            for (int i = 0; i < values.length; i++)
+                results.add(values[i]);
+        } else
+            results.add(values1.toString());
 
         if (values2 == null) {
             // Skip - nothing to merge
-        } else {
-            for (String value : values2) {
-                results.add(value);
-            }
-        }
+        } else if (values2 instanceof String)
+            results.add(values2);
+        else if (values2 instanceof String[]) {
+            String values[] = (String[]) values2;
+            for (int i = 0; i < values.length; i++)
+                results.add(values[i]);
+        } else
+            results.add(values2.toString());
 
         String values[] = new String[results.size()];
         return results.toArray(values);
+
     }
 
 
@@ -852,45 +869,25 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
         if ((queryParamString == null) || (queryParamString.length() < 1))
             return;
 
-        // Parse the query string from the dispatch target
-        Parameters paramParser = new Parameters();
-        MessageBytes queryMB = MessageBytes.newInstance();
-        queryMB.setString(queryParamString);
-
-        // TODO
-        // - Should only use body encoding if useBodyEncodingForURI is true
-        // - Otherwise, should use URIEncoding
-        // - The problem is that the connector is not available...
-        // - To add to the fun, the URI default changed in Servlet 4.0 to UTF-8
-
+        HashMap<String, String[]> queryParameters = new HashMap<>();
         String encoding = getCharacterEncoding();
-        Charset charset = null;
-        if (encoding != null) {
-            try {
-                charset = B2CConverter.getCharset(encoding);
-                queryMB.setCharset(charset);
-            } catch (UnsupportedEncodingException e) {
-                // Fall-back to default (ISO-8859-1)
-                charset = StandardCharsets.ISO_8859_1;
-            }
-        }
-
-        paramParser.setQuery(queryMB);
-        paramParser.setQueryStringCharset(charset);
-        paramParser.handleQueryParameters();
-
-        // Insert the additional parameters from the dispatch target
-        Enumeration<String> dispParamNames = paramParser.getParameterNames();
-        while (dispParamNames.hasMoreElements()) {
-            String dispParamName = dispParamNames.nextElement();
-            String[] dispParamValues = paramParser.getParameterValues(dispParamName);
-            String[] originalValues = parameters.get(dispParamName);
-            if (originalValues == null) {
-                parameters.put(dispParamName, dispParamValues);
+        if (encoding == null)
+            encoding = "ISO-8859-1";
+        RequestUtil.parseParameters(queryParameters, queryParamString,
+                encoding);
+        Iterator<String> keys = parameters.keySet().iterator();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            Object value = queryParameters.get(key);
+            if (value == null) {
+                queryParameters.put(key, parameters.get(key));
                 continue;
             }
-            parameters.put(dispParamName, mergeValues(dispParamValues, originalValues));
+            queryParameters.put
+                (key, mergeValues(value, parameters.get(key)));
         }
+        parameters = queryParameters;
+
     }
 
 
@@ -932,7 +929,7 @@ class ApplicationHttpRequest extends HttpServletRequestWrapper {
                 for (int i = pos + 1; i <= last; i++) {
                     if (getAttribute(specials[i]) != null) {
                         pos = i;
-                        return specials[i];
+                        return (specials[i]);
                     }
                 }
             }

@@ -55,13 +55,13 @@ import org.apache.catalina.util.LifecycleMBeanBase;
 import org.apache.juli.logging.Log;
 import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.JarScanner;
+import org.apache.tomcat.util.descriptor.web.ApplicationListener;
 import org.apache.tomcat.util.descriptor.web.ApplicationParameter;
 import org.apache.tomcat.util.descriptor.web.ErrorPage;
 import org.apache.tomcat.util.descriptor.web.FilterDef;
 import org.apache.tomcat.util.descriptor.web.FilterMap;
 import org.apache.tomcat.util.descriptor.web.LoginConfig;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
-import org.apache.tomcat.util.http.CookieProcessor;
 import org.apache.tomcat.util.res.StringManager;
 
 /**
@@ -239,9 +239,6 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
 
     @Override
     public Log getLogger() { return null; }
-
-    @Override
-    public String getLogName() { return null; }
 
     @Override
     public Manager getManager() { return null; }
@@ -483,9 +480,9 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
     public boolean getLogEffectiveWebXml() { return false; }
 
     @Override
-    public void addApplicationListener(String listener) { /* NO-OP */ }
+    public void addApplicationListener(ApplicationListener listener) { /* NO-OP */ }
     @Override
-    public String[] findApplicationListeners() { return null; }
+    public ApplicationListener[] findApplicationListeners() { return null; }
     @Override
     public void removeApplicationListener(String listener) { /* NO-OP */ }
 
@@ -533,6 +530,13 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
     public void removeFilterMap(FilterMap filterMap) { /* NO-OP */ }
 
     @Override
+    public void addInstanceListener(String listener) { /* NO-OP */ }
+    @Override
+    public String[] findInstanceListeners() { return null; }
+    @Override
+    public void removeInstanceListener(String listener) { /* NO-OP */ }
+
+    @Override
     public void addLocaleEncodingMappingParameter(String locale, String encoding) { /* NO-OP */ }
 
     @Override
@@ -570,7 +574,9 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
     public void removeSecurityRole(String role) { /* NO-OP */ }
 
     @Override
-    public void addServletMappingDecoded(String pattern, String name,
+    public void addServletMapping(String pattern, String name) { /* NO-OP */ }
+    @Override
+    public void addServletMapping(String pattern, String name,
             boolean jspWildcard) { /* NO-OP */ }
     @Override
     public String findServletMapping(String pattern) { return null; }
@@ -684,9 +690,6 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
     public File getCatalinaBase() { return null; }
 
     @Override
-    public File getCatalinaHome() { return null; }
-
-    @Override
     public void setAddWebinfClassesResources(boolean addWebinfClassesResources) {
         // NO-OP
     }
@@ -746,57 +749,4 @@ public class FailedContext extends LifecycleMBeanBase implements Context {
     public void unbind(boolean usePrivilegedAction, ClassLoader originalClassLoader) {
         // NO-OP
     }
-
-    @Override
-    public Object getNamingToken() { return null; }
-
-    @Override
-    public void setCookieProcessor(CookieProcessor cookieProcessor) { /* NO-OP */ }
-
-    @Override
-    public CookieProcessor getCookieProcessor() { return null; }
-
-    @Override
-    public void setValidateClientProvidedNewSessionId(boolean validateClientProvidedNewSessionId) {
-        // NO-OP
-    }
-
-    @Override
-    public boolean getValidateClientProvidedNewSessionId() { return false; }
-
-    @Override
-    public void setMapperContextRootRedirectEnabled(boolean mapperContextRootRedirectEnabled) {
-        // NO-OP
-    }
-
-    @Override
-    public boolean getMapperContextRootRedirectEnabled() { return false; }
-
-    @Override
-    public void setMapperDirectoryRedirectEnabled(boolean mapperDirectoryRedirectEnabled) {
-        // NO-OP
-    }
-
-    @Override
-    public boolean getMapperDirectoryRedirectEnabled() { return false; }
-
-    @Override
-    public void setUseRelativeRedirects(boolean useRelativeRedirects) { /* NO-OP */ }
-    @Override
-    public boolean getUseRelativeRedirects() { return true; }
-
-    @Override
-    public void setDispatchersUseEncodedPaths(boolean dispatchersUseEncodedPaths) { /* NO-OP */ }
-    @Override
-    public boolean getDispatchersUseEncodedPaths() { return true; }
-
-    @Override
-    public void setRequestCharacterEncoding(String encoding) { /* NO-OP */ }
-    @Override
-    public String getRequestCharacterEncoding() { return null; }
-
-    @Override
-    public void setResponseCharacterEncoding(String encoding) { /* NO-OP */ }
-    @Override
-    public String getResponseCharacterEncoding() { return null; }
 }

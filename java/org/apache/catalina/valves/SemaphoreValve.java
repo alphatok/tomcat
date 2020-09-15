@@ -172,10 +172,8 @@ public class SemaphoreValve extends ValveBase {
 
     /**
      * Subclass friendly method to add conditions.
-     * @param request The Servlet request
-     * @param response The Servlet response
-     * @return <code>true</code> if the concurrency control should occur
-     *  on this request
+     * @param request
+     * @param response
      */
     public boolean controlConcurrency(Request request, Response response) {
         return true;
@@ -185,10 +183,10 @@ public class SemaphoreValve extends ValveBase {
     /**
      * Subclass friendly method to add error handling when a permit isn't
      * granted.
-     * @param request The Servlet request
-     * @param response The Servlet response
-     * @throws IOException Error writing output
-     * @throws ServletException Other error
+     * @param request
+     * @param response
+     * @throws IOException
+     * @throws ServletException
      */
     public void permitDenied(Request request, Response response)
         throws IOException, ServletException {

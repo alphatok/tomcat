@@ -49,7 +49,7 @@ public class CoyotePrincipal implements Principal, Serializable {
 
     @Override
     public String getName() {
-        return this.name;
+        return (this.name);
     }
 
 
@@ -62,10 +62,12 @@ public class CoyotePrincipal implements Principal, Serializable {
      */
     @Override
     public String toString() {
+
         StringBuilder sb = new StringBuilder("CoyotePrincipal[");
         sb.append(this.name);
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
+
     }
 
 

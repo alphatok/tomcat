@@ -19,7 +19,6 @@ package org.apache.tomcat.util.descriptor.web;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 
 /**
@@ -42,7 +41,7 @@ public class ContextService extends ResourceBase {
     private String displayname = null;
 
     public String getDisplayname() {
-        return this.displayname;
+        return (this.displayname);
     }
 
     public void setDisplayname(String displayname) {
@@ -55,7 +54,7 @@ public class ContextService extends ResourceBase {
     private String largeIcon = null;
 
     public String getLargeIcon() {
-        return this.largeIcon;
+        return (this.largeIcon);
     }
 
     public void setLargeIcon(String largeIcon) {
@@ -68,7 +67,7 @@ public class ContextService extends ResourceBase {
     private String smallIcon = null;
 
     public String getSmallIcon() {
-        return this.smallIcon;
+        return (this.smallIcon);
     }
 
     public void setSmallIcon(String smallIcon) {
@@ -96,7 +95,7 @@ public class ContextService extends ResourceBase {
     private String wsdlfile = null;
 
     public String getWsdlfile() {
-        return this.wsdlfile;
+        return (this.wsdlfile);
     }
 
     public void setWsdlfile(String wsdlfile) {
@@ -110,7 +109,7 @@ public class ContextService extends ResourceBase {
     private String jaxrpcmappingfile = null;
 
     public String getJaxrpcmappingfile() {
-        return this.jaxrpcmappingfile;
+        return (this.jaxrpcmappingfile);
     }
 
     public void setJaxrpcmappingfile(String jaxrpcmappingfile) {
@@ -131,7 +130,7 @@ public class ContextService extends ResourceBase {
     private String[] serviceqname = new String[2];
 
     public String[] getServiceqname() {
-        return this.serviceqname;
+        return (this.serviceqname);
     }
 
     public String getServiceqname(int i) {
@@ -166,7 +165,7 @@ public class ContextService extends ResourceBase {
      * Declares a client dependency on the container to resolving a Service Endpoint Interface
      * to a WSDL port. It optionally associates the Service Endpoint Interface with a
      * particular port-component.
-     * @return the endpoint names
+     *
      */
     public Iterator<String> getServiceendpoints() {
         return this.listProperties();
@@ -187,7 +186,7 @@ public class ContextService extends ResourceBase {
      *
      * The instantiation of the handler have to be done.
      */
-    private final Map<String, ContextHandler> handlers = new HashMap<>();
+    private final HashMap<String, ContextHandler> handlers = new HashMap<>();
 
     public Iterator<String> getHandlers() {
         return handlers.keySet().iterator();
@@ -259,7 +258,7 @@ public class ContextService extends ResourceBase {
             sb.append(handlers);
         }
         sb.append("]");
-        return sb.toString();
+        return (sb.toString());
     }
 
 

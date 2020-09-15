@@ -72,8 +72,8 @@
     <p>The implementation of this functionality depends on the following
     external specifications:</p>
     <ul>
-    <li><a href="http://docs.oracle.com/javase/7/docs/technotes/guides/jndi/index.html">
-        Java Naming and Directory Interface</a> (version 1.2.1 or later)</li>
+    <li><a href="http://java.sun.com/products/jndi/">Java Naming and
+        Directory Interface</a> (version 1.2.1 or later)</li>
     </ul>
 
   </subsection>
@@ -403,7 +403,7 @@
 
 <section name="Testable Assertions">
 
-  <p>In addition to the assertions implied by the functionality requirements
+  <p>In addition the the assertions implied by the functionality requirements
   listed above, the following additional assertions shall be tested to
   validate the behavior of <code>JNDIRealm</code>:</p>
   <ul>

@@ -17,12 +17,15 @@
 package org.apache.catalina.ha.session;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
+import org.apache.catalina.Cluster;
 import org.apache.catalina.DistributedManager;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleState;
 import org.apache.catalina.Session;
+import org.apache.catalina.ha.CatalinaCluster;
 import org.apache.catalina.ha.ClusterManager;
 import org.apache.catalina.ha.ClusterMessage;
 import org.apache.catalina.tribes.Channel;
@@ -43,7 +46,7 @@ public class BackupManager extends ClusterManagerBase
     /**
      * The string manager for this package.
      */
-    protected static final StringManager sm = StringManager.getManager(BackupManager.class);
+    protected static final StringManager sm = StringManager.getManager(Constants.Package);
 
     protected static final long DEFAULT_REPL_TIMEOUT = 15000;//15 seconds
 
@@ -66,11 +69,6 @@ public class BackupManager extends ClusterManagerBase
      * Flag for whether to terminate this map that failed to start.
      */
     private boolean terminateOnStartFailure = false;
-
-    /**
-     * The timeout for a ping message in replication map.
-     */
-    private long accessTimeout = 5000;
 
     /**
      * Constructor, just calls super()
@@ -104,7 +102,7 @@ public class BackupManager extends ClusterManagerBase
 //=========================================================================
     @Override
     public void objectMadePrimary(Object key, Object value) {
-        if (value instanceof DeltaSession) {
+        if (value!=null && value instanceof DeltaSession) {
             DeltaSession session = (DeltaSession)value;
             synchronized (session) {
                 session.access();
@@ -143,12 +141,20 @@ public class BackupManager extends ClusterManagerBase
         super.startInternal();
 
         try {
-            if (cluster == null) throw new LifecycleException(sm.getString("backupManager.noCluster", getName()));
+            if (getCluster() == null) {
+                Cluster cluster = getContext().getCluster();
+                if (cluster instanceof CatalinaCluster) {
+                    setCluster((CatalinaCluster)cluster);
+                } else {
+                    throw new LifecycleException(
+                            sm.getString("backupManager.noCluster", getName()));
+                }
+            }
+            cluster.registerManager(this);
             LazyReplicatedMap<String,Session> map = new LazyReplicatedMap<>(
                     this, cluster.getChannel(), rpcTimeout, getMapName(),
                     getClassLoaders(), terminateOnStartFailure);
             map.setChannelSendOptions(mapSendOptions);
-            map.setAccessTimeout(accessTimeout);
             this.sessions = map;
         }  catch ( Exception x ) {
             log.error(sm.getString("backupManager.startUnable", getName()),x);
@@ -188,7 +194,13 @@ public class BackupManager extends ClusterManagerBase
             map.breakdown();
         }
 
+        cluster.removeManager(this);
         super.stopInternal();
+    }
+
+    @Override
+    public void setDistributable(boolean dist) {
+        this.distributable = dist;
     }
 
     @Override
@@ -220,14 +232,6 @@ public class BackupManager extends ClusterManagerBase
         return terminateOnStartFailure;
     }
 
-    public long getAccessTimeout() {
-        return accessTimeout;
-    }
-
-    public void setAccessTimeout(long accessTimeout) {
-        this.accessTimeout = accessTimeout;
-    }
-
     @Override
     public String[] getInvalidatedSessions() {
         return new String[0];
@@ -240,7 +244,6 @@ public class BackupManager extends ClusterManagerBase
         result.mapSendOptions = mapSendOptions;
         result.rpcTimeout = rpcTimeout;
         result.terminateOnStartFailure = terminateOnStartFailure;
-        result.accessTimeout = accessTimeout;
         return result;
     }
 
@@ -256,8 +259,9 @@ public class BackupManager extends ClusterManagerBase
         Set<String> sessionIds = new HashSet<>();
         LazyReplicatedMap<String,Session> map =
                 (LazyReplicatedMap<String,Session>)sessions;
-        for (String id : map.keySetFull()) {
-            sessionIds.add(id);
+        Iterator<String> keys = map.keySetFull().iterator();
+        while (keys.hasNext()) {
+            sessionIds.add(keys.next());
         }
         return sessionIds;
     }

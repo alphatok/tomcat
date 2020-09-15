@@ -34,6 +34,7 @@ import org.apache.tomcat.jdbc.pool.ProxyConnection;
 public class ResetAbandonedTimer extends AbstractQueryReport {
 
     public ResetAbandonedTimer() {
+        // TODO Auto-generated constructor stub
     }
 
     public boolean resetTimer() {
@@ -57,6 +58,7 @@ public class ResetAbandonedTimer extends AbstractQueryReport {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // TODO Auto-generated method stub
         Object result = super.invoke(proxy, method, args);
         resetTimer();
         return result;

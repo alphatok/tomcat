@@ -17,6 +17,7 @@
 
 package org.apache.jasper.compiler;
 
+import java.io.File;
 import java.io.IOException;
 
 import javax.servlet.http.HttpServletResponse;
@@ -26,6 +27,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.startup.TomcatBaseTest;
 import org.apache.tomcat.util.buf.ByteChunk;
 import org.w3c.dom.Document;
@@ -37,7 +39,14 @@ public class TestJspDocumentParser extends TomcatBaseTest {
 
     @Test
     public void testBug47977() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir =
+            new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         int rc = getUrl("http://localhost:" + getPort() +
                 "/test/bug47977.jspx", new ByteChunk(), null);
@@ -47,7 +56,14 @@ public class TestJspDocumentParser extends TomcatBaseTest {
 
     @Test
     public void testBug48827() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir =
+            new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         Exception e = null;
         try {
@@ -62,7 +78,13 @@ public class TestJspDocumentParser extends TomcatBaseTest {
 
     @Test
     public void testBug54801() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir = new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         ByteChunk bc = new ByteChunk();
         int rc = getUrl("http://localhost:" + getPort() +
@@ -77,7 +99,13 @@ public class TestJspDocumentParser extends TomcatBaseTest {
 
     @Test
     public void testBug54821() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir = new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         ByteChunk bc = new ByteChunk();
         int rc = getUrl("http://localhost:" + getPort() +
@@ -92,7 +120,13 @@ public class TestJspDocumentParser extends TomcatBaseTest {
 
     @Test
     public void testSchemaValidation() throws Exception {
-        getTomcatInstanceTestWebapp(false, true);
+        Tomcat tomcat = getTomcatInstance();
+
+        File appDir = new File("test/webapp");
+        // app dir is relative to server home
+        tomcat.addWebapp(null, "/test", appDir.getAbsolutePath());
+
+        tomcat.start();
 
         String path = "http://localhost:" + getPort() + "/test/valid.jspx";
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();

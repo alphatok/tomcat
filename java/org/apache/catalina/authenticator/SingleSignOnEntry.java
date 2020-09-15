@@ -16,14 +16,7 @@
  */
 package org.apache.catalina.authenticator;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.security.Principal;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -40,25 +33,21 @@ import org.apache.catalina.Session;
  * @see SingleSignOn
  * @see AuthenticatorBase#reauthenticateFromSSO
  */
-public class SingleSignOnEntry implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-
+public class SingleSignOnEntry
+{
     // ------------------------------------------------------  Instance Fields
 
-    private String authType = null;
+    protected String authType = null;
 
-    private String password = null;
+    protected String password = null;
 
-    // Marked as transient so special handling can be applied to serialization
-    private transient Principal principal = null;
+    protected Principal principal = null;
 
-    private final Map<SingleSignOnSessionKey,SingleSignOnSessionKey> sessionKeys =
-            new ConcurrentHashMap<>();
+    protected Session sessions[] = new Session[0];
 
-    private String username = null;
+    protected String username = null;
 
-    private boolean canReauthenticate = false;
+    protected boolean canReauthenticate = false;
 
     // ---------------------------------------------------------  Constructors
 
@@ -86,16 +75,18 @@ public class SingleSignOnEntry implements Serializable {
      *
      * @param sso       The <code>SingleSignOn</code> valve that is managing
      *                  the SSO session.
-     * @param ssoId     The ID of the SSO session.
      * @param session   The <code>Session</code> being associated with the SSO.
      */
-    public void addSession(SingleSignOn sso, String ssoId, Session session) {
-        SingleSignOnSessionKey key = new SingleSignOnSessionKey(session);
-        SingleSignOnSessionKey currentKey = sessionKeys.putIfAbsent(key, key);
-        if (currentKey == null) {
-            // Session not previously added
-            session.addSessionListener(sso.getSessionListener(ssoId));
+    public synchronized void addSession(SingleSignOn sso, Session session) {
+        for (int i = 0; i < sessions.length; i++) {
+            if (session == sessions[i])
+                return;
         }
+        Session results[] = new Session[sessions.length + 1];
+        System.arraycopy(sessions, 0, results, 0, sessions.length);
+        results[sessions.length] = session;
+        sessions = results;
+        session.addSessionListener(sso);
     }
 
     /**
@@ -104,19 +95,21 @@ public class SingleSignOnEntry implements Serializable {
      *
      * @param session  the <code>Session</code> to remove.
      */
-    public void removeSession(Session session) {
-        SingleSignOnSessionKey key = new SingleSignOnSessionKey(session);
-        sessionKeys.remove(key);
+    public synchronized void removeSession(Session session) {
+        Session[] nsessions = new Session[sessions.length - 1];
+        for (int i = 0, j = 0; i < sessions.length; i++) {
+            if (session == sessions[i])
+                continue;
+            nsessions[j++] = sessions[i];
+        }
+        sessions = nsessions;
     }
 
     /**
-     * Returns the HTTP Session identifiers associated with this SSO.
-     *
-     * @return The identifiers for the HTTP sessions that are current associated
-     *         with this SSo entry
+     * Returns the <code>Session</code>s associated with this SSO.
      */
-    public Set<SingleSignOnSessionKey> findSessions() {
-        return sessionKeys.keySet();
+    public synchronized Session[] findSessions() {
+        return (this.sessions);
     }
 
     /**
@@ -126,7 +119,7 @@ public class SingleSignOnEntry implements Serializable {
      * @return "BASIC", "CLIENT_CERT", "DIGEST", "FORM" or "NONE"
      */
     public String getAuthType() {
-        return this.authType;
+        return (this.authType);
     }
 
     /**
@@ -137,7 +130,7 @@ public class SingleSignOnEntry implements Serializable {
      *          "BASIC" or "FORM", <code>false</code> otherwise.
      */
     public boolean getCanReauthenticate() {
-        return this.canReauthenticate;
+        return (this.canReauthenticate);
     }
 
     /**
@@ -148,28 +141,23 @@ public class SingleSignOnEntry implements Serializable {
      *          does not involve a password.
      */
     public String getPassword() {
-        return this.password;
+        return (this.password);
     }
 
     /**
-     * Gets the <code>Principal</code> that has been authenticated by the SSO.
-     *
-     * @return The Principal that was created by the authentication that
-     *         triggered the creation of the SSO entry
+     * Gets the <code>Principal</code> that has been authenticated by
+     * the SSO.
      */
     public Principal getPrincipal() {
-        return this.principal;
+        return (this.principal);
     }
 
     /**
-     * Gets the user name provided by the user as part of the authentication
+     * Gets the username provided by the user as part of the authentication
      * process.
-     *
-     * @return The user name that was authenticated as part of the
-     *         authentication that triggered the creation of the SSO entry
      */
     public String getUsername() {
-        return this.username;
+        return (this.username);
     }
 
 
@@ -184,33 +172,16 @@ public class SingleSignOnEntry implements Serializable {
      * @param username  the username (if any) used for the authentication
      * @param password  the password (if any) used for the authentication
      */
-    public synchronized void updateCredentials(Principal principal, String authType,
+    public void updateCredentials(Principal principal, String authType,
                                   String username, String password) {
+
         this.principal = principal;
         this.authType = authType;
         this.username = username;
         this.password = password;
-        this.canReauthenticate = (HttpServletRequest.BASIC_AUTH.equals(authType) ||
-                HttpServletRequest.FORM_AUTH.equals(authType));
+        this.canReauthenticate =
+            (HttpServletRequest.BASIC_AUTH.equals(authType)
+                || HttpServletRequest.FORM_AUTH.equals(authType));
     }
 
-
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-        if (principal instanceof Serializable) {
-            out.writeBoolean(true);
-            out.writeObject(principal);
-        } else {
-            out.writeBoolean(false);
-        }
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException,
-            ClassNotFoundException {
-        in.defaultReadObject();
-        boolean hasPrincipal = in.readBoolean();
-        if (hasPrincipal) {
-            principal = (Principal) in.readObject();
-        }
-    }
 }

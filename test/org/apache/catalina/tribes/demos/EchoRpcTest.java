@@ -53,6 +53,8 @@ public class EchoRpcTest implements RpcCallback, Runnable {
      *
      * @param msg Serializable
      * @param sender Member
+     * TODO Implement this org.apache.catalina.tribes.tipis.RpcCallback
+     *   method
      */
     @Override
     public void leftOver(Serializable msg, Member sender) {
@@ -64,6 +66,8 @@ public class EchoRpcTest implements RpcCallback, Runnable {
      * @param msg Serializable
      * @param sender Member
      * @return Serializable - null if no reply should be sent
+     * TODO Implement this org.apache.catalina.tribes.tipis.RpcCallback
+     *   method
      */
     @Override
     public Serializable replyRequest(Serializable msg, Member sender) {

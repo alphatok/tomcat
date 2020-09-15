@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <!--
   Licensed to the Apache Software Foundation (ASF) under one or more
   contributor license agreements.  See the NOTICE file distributed with
@@ -39,10 +39,6 @@
     <attribute   name="address"
           description="The IP address on which to bind"
                  type="java.lang.String"/>
-
-    <attribute   name="ajpFlush"
-          description="Send AJP flush package for each explicit flush"
-                 type="boolean"/>
 
     <attribute   name="allowTrace"
           description="Allow disabling TRACE method"
@@ -88,8 +84,7 @@
 
     <attribute   name="localPort"
           description="The port number on which this connector is listening to requests. If the special value for port of zero is used then this method will report the actual port bound."
-                 type="int"
-            writeable="false"/>
+                type="int"/>
 
     <attribute   name="maxHeaderCount"
           description="The maximum number of headers that are allowed by the container. 100 by default. A value of less than 0 means no limit."
@@ -111,17 +106,13 @@
           description="Maximum size of a POST which will be saved by the container during authentication"
                  type="int"/>
 
-    <attribute   name="maxSwallowSize"
-          description="The maximum number of request body bytes to be swallowed by Tomcat for an aborted upload"
-                 type="int"/>
-
     <!-- Common -->
     <attribute   name="maxThreads"
-          description="The maximum number of request processing threads to be created for the internal Executor. -1 indicates an external Executor is being used."
+          description="The maximum number of request processing threads to be created"
                  type="int"/>
 
     <attribute   name="minSpareThreads"
-          description="The number of request processing threads that will be created for the internal Executor. -1 indicates an external Executor is being used."
+          description="The number of request processing threads that will be created"
                  type="int"/>
 
     <!-- Common -->
@@ -140,8 +131,7 @@
 
     <attribute   name="protocol"
           description="Coyote protocol handler in use"
-                 type="java.lang.String"
-            writeable="false"/>
+                 type="java.lang.String"/>
 
     <attribute   name="protocolHandlerClassName"
           description="Coyote Protocol handler class name"
@@ -149,11 +139,11 @@
             writeable="false"/>
 
     <attribute   name="proxyName"
-          description="The Server name to which we should pretend requests to this Connector"
+          description="Ther Server name to which we should pretend requests to this Connector"
                  type="java.lang.String"/>
 
     <attribute   name="proxyPort"
-          description="The Server port to which we should pretend requests to this Connector"
+          description="Ther Server port to which we should pretend requests to this Connector"
                  type="int"/>
 
     <attribute   name="redirectPort"
@@ -189,7 +179,7 @@
 
     <!-- Common -->
     <attribute    name="threadPriority"
-           description="The thread priority for processors using the internal Executor. -1 indicates an external Executor is being used."
+           description="The thread priority for processors"
                   type="int"/>
 
     <attribute   name="URIEncoding"

@@ -33,11 +33,13 @@ import org.junit.Test;
 import org.apache.catalina.Context;
 import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.startup.TomcatBaseTest;
+import org.apache.tomcat.util.descriptor.web.ApplicationListener;
 import org.apache.tomcat.websocket.TesterMessageCountClient.TesterEndpoint;
 import org.apache.tomcat.websocket.TesterMessageCountClient.TesterProgrammaticEndpoint;
 
 
-public class TestWsPingPongMessages extends WebSocketBaseTest {
+public class TestWsPingPongMessages extends TomcatBaseTest {
 
     ByteBuffer applicationData = ByteBuffer.wrap(new String("mydata")
             .getBytes());
@@ -45,17 +47,21 @@ public class TestWsPingPongMessages extends WebSocketBaseTest {
     @Test
     public void testPingPongMessages() throws Exception {
         Tomcat tomcat = getTomcatInstance();
-        // No file system docBase required
-        Context ctx = tomcat.addContext("", null);
-        ctx.addApplicationListener(TesterEchoServer.Config.class.getName());
+        // Must have a real docBase - just use temp
+        Context ctx = tomcat.addContext("",
+                System.getProperty("java.io.tmpdir"));
+        ctx.addApplicationListener(new ApplicationListener(
+                TesterEchoServer.Config.class.getName(), false));
 
         Tomcat.addServlet(ctx, "default", new DefaultServlet());
-        ctx.addServletMappingDecoded("/", "default");
+        ctx.addServletMapping("/", "default");
 
         tomcat.start();
 
         WebSocketContainer wsContainer = ContainerProvider
                 .getWebSocketContainer();
+
+        tomcat.start();
 
         Session wsSession = wsContainer.connectToServer(
                 TesterProgrammaticEndpoint.class, ClientEndpointConfig.Builder

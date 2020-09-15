@@ -266,13 +266,15 @@ public class TestVirtualContext extends TomcatBaseTest {
             new File(additionWebInfClasses,
                 MyAnnotatedServlet.class.getPackage().getName().replace('.', '/'));
         Assert.assertTrue(targetPackageForAnnotatedClass.mkdirs());
-        try (InputStream annotatedServletClassInputStream = this.getClass().getResourceAsStream(
+        InputStream annotatedServletClassInputStream =
+            this.getClass().getResourceAsStream(
                 MyAnnotatedServlet.class.getSimpleName() + ".class");
-                FileOutputStream annotatedServletClassOutputStream = new FileOutputStream(new File(
-                        targetPackageForAnnotatedClass, MyAnnotatedServlet.class.getSimpleName()
-                                + ".class"))) {
-            IOUtils.copy(annotatedServletClassInputStream, annotatedServletClassOutputStream);
-        }
+        FileOutputStream annotatedServletClassOutputStream =
+            new FileOutputStream(new File(targetPackageForAnnotatedClass,
+                MyAnnotatedServlet.class.getSimpleName() + ".class"));
+        IOUtils.copy(annotatedServletClassInputStream, annotatedServletClassOutputStream);
+        annotatedServletClassInputStream.close();
+        annotatedServletClassOutputStream.close();
 
         ctx.setResources(new StandardRoot(ctx));
         File f1 = new File("test/webapp-virtual-webapp/target/classes");
@@ -333,7 +335,7 @@ public class TestVirtualContext extends TomcatBaseTest {
 
         if (expectedStatus == 200) {
             String result = res.toString();
-            assertTrue(result, result.contains(expectedBody));
+            assertTrue(result, result.indexOf(expectedBody) >= 0);
         }
     }
 }

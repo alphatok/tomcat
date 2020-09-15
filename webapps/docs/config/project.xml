@@ -15,10 +15,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<project name="Apache Tomcat 9 Configuration Reference"
+<project name="Apache Tomcat 8 Configuration Reference"
         href="http://tomcat.apache.org/">
 
-  <title>Apache Tomcat 9 Configuration Reference</title>
+  <title>Apache Tomcat 8 Configuration Reference</title>
 
   <logo href="/images/tomcat.gif">
     The Apache Tomcat Servlet/JSP Container
@@ -44,8 +44,7 @@
     </menu>
 
     <menu name="Connectors">
-        <item name="HTTP/1.1"              href="http.html"/>
-        <item name="HTTP/2"                href="http2.html"/>
+        <item name="HTTP"                  href="http.html"/>
         <item name="AJP"                   href="ajp.html"/>
     </menu>
 
@@ -57,8 +56,6 @@
     </menu>
 
     <menu name="Nested Components">
-        <item name="CookieProcessor"       href="cookie-processor.html"/>
-        <item name="CredentialHandler"     href="credentialhandler.html"/>
         <item name="Global Resources"      href="globalresources.html"/>
         <item name="JarScanner"            href="jar-scanner.html"/>
         <item name="JarScanFilter"         href="jar-scan-filter.html"/>
@@ -67,7 +64,6 @@
         <item name="Manager"               href="manager.html"/>
         <item name="Realm"                 href="realm.html"/>
         <item name="Resources"             href="resources.html"/>
-        <item name="SessionIdGenerator"    href="sessionidgenerator.html"/>
         <item name="Valve"                 href="valve.html"/>
     </menu>
 
@@ -84,13 +80,9 @@
         <item name="ClusterListener"       href="cluster-listener.html"/>
     </menu>
 
-    <menu name="web.xml">
-        <item name="Filter"                href="filter.html"/>
-    </menu>
-
     <menu name="Other">
+        <item name="Filter"                href="filter.html"/>
         <item name="System properties"     href="systemprops.html"/>
-        <item name="JASPIC"                href="jaspic.html"/>
     </menu>
   </body>
 

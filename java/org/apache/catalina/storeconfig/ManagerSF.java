@@ -19,8 +19,6 @@ package org.apache.catalina.storeconfig;
 
 import java.io.PrintWriter;
 
-import org.apache.catalina.Manager;
-import org.apache.catalina.SessionIdGenerator;
 import org.apache.catalina.session.StandardManager;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -49,7 +47,9 @@ public class ManagerSF extends StoreFactoryBase {
                     if (log.isDebugEnabled())
                         log.debug(sm.getString("factory.storeTag", elementDesc
                                 .getTag(), aElement));
-                    super.store(aWriter, indent, aElement);
+                    getStoreAppender().printIndent(aWriter, indent + 2);
+                    getStoreAppender().printTag(aWriter, indent + 2, manager,
+                            elementDesc);
                 }
             } else {
                 super.store(aWriter, indent, aElement);
@@ -67,29 +67,15 @@ public class ManagerSF extends StoreFactoryBase {
      *
      * @param smanager
      *            Manager to be tested
-     * @return <code>true</code> if this is an instance of the default manager
      */
     protected boolean isDefaultManager(StandardManager smanager) {
 
         if (!"SESSIONS.ser".equals(smanager.getPathname())
                 || (smanager.getMaxActiveSessions() != -1)) {
-            return false;
+            return (false);
         }
-        return true;
+        return (true);
 
-    }
-
-    @Override
-    public void storeChildren(PrintWriter aWriter, int indent, Object aManager,
-            StoreDescription parentDesc) throws Exception {
-        if (aManager instanceof Manager) {
-            Manager manager = (Manager) aManager;
-            // Store nested <SessionIdGenerator> element;
-            SessionIdGenerator sessionIdGenerator = manager.getSessionIdGenerator();
-            if (sessionIdGenerator != null) {
-                storeElement(aWriter, indent, sessionIdGenerator);
-            }
-        }
     }
 
 }
